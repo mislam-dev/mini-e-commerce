@@ -1,0 +1,814 @@
+openapi: 3.0.3
+info:
+  title: Mini E-Commerce API
+  description: API for managing users, products, cart operations, orders, and fraud detection.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local Development Server
+
+paths:
+  # Auth
+  /auth/register:
+    post:
+      summary: Register a new user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDTO'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /auth/login:
+    post:
+      summary: User login
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginDTO'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/profile:
+    get:
+      summary: Get current user profile
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # Products
+  /product:
+    get:
+      summary: List products
+      tags: [Product]
+      parameters:
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/offsetParam'
+      responses:
+        '200':
+          description: List of products
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginationWrapper'
+                  - properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Product'
+    post:
+      summary: Create a new product (Admin only)
+      tags: [Product]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateDTO'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /product/{id}:
+    get:
+      summary: Get product by ID
+      tags: [Product]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update product (Admin only)
+      tags: [Product]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdateDTO'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete product (Admin only)
+      tags: [Product]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Product deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /product/{id}/stock:
+    patch:
+      summary: Manage product stock (Admin only)
+      tags: [Product]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockUpdateDTO'
+      responses:
+        '200':
+          description: Stock updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Cart
+  /cart:
+    get:
+      summary: View cart
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user's cart
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CartItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Add item to cart
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CartAddDTO'
+      responses:
+        '201':
+          description: Item added to cart
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /cart/{productId}:
+    delete:
+      summary: Remove item from cart
+      tags: [Cart]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Item removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Orders
+  /order:
+    post:
+      summary: Place an order
+      tags: [Order]
+      security:
+        - bearerAuth: []
+      description: Creates an order from the current user's cart. Calculates total, checks stock, prevents negative inventory.
+      responses:
+        '201':
+          description: Order placed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Validation error (e.g. stock insufficient, fraud detected)
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    get:
+      summary: List all orders (Admin only)
+      tags: [Order]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/offsetParam'
+      responses:
+        '200':
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginationWrapper'
+                  - properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /order/my:
+    get:
+      summary: List my orders
+      tags: [Order]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/offsetParam'
+      responses:
+        '200':
+          description: List of user's orders
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginationWrapper'
+                  - properties:
+                      results:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /order/{id}:
+    get:
+      summary: Get order details
+      tags: [Order]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /order/{id}/status:
+    patch:
+      summary: Update order status (Admin only)
+      tags: [Order]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderStatusUpdateDTO'
+      responses:
+        '200':
+          description: Order status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Payment
+  /payment/initiate:
+    post:
+      summary: Initiate payment
+      tags: [Payment]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentInitiateDTO'
+      responses:
+        '200':
+          description: Payment initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /payment/ipn:
+    post:
+      summary: Payment IPN/Callback
+      tags: [Payment]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCallbackDTO'
+      responses:
+        '200':
+          description: IPN processed successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /payment/validate:
+    post:
+      summary: Payment validate
+      tags: [Payment]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentValidateDTO'
+      responses:
+        '200':
+          description: Payment validated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    limitParam:
+      name: limit
+      in: query
+      description: Number of items to return
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 10
+    offsetParam:
+      name: offset
+      in: query
+      description: Number of items to skip
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          example:
+            code: 400
+            message: Bad Request
+            fields:
+              - field: field1
+                values:
+                  - field1 cannot be empty.
+                  - field1 cannot be empty.
+
+              - field: field2
+                values:
+                  - field2 must be at least 8 characters long.
+                  - field2 must be at least 8 characters long.
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          example:
+            code: 401
+            statusCode: Unauthorized
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          example:
+            statusCode: 403
+            message: Forbidden resource
+            error: Forbidden
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          example:
+            statusCode: 404
+            message: 'Not found!'
+            error: 'Not found!'
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          example:
+            statusCode: 404
+            message: 'Internal Server Error'
+            error: 'Internal Server Error'
+  schemas:
+    # Common
+    ErrorResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: 'Invalid request parameters'
+        error:
+          type: string
+          example: 'Bad Request'
+
+    PaginationWrapper:
+      type: object
+      properties:
+        total:
+          type: number
+        limit:
+          type: number
+        offset:
+          type: number
+        results:
+          type: array
+          items: {} # Overridden in endpoints
+
+    # Auth DTOs
+    RegisterDTO:
+      type: object
+      required:
+        - email
+        - password
+        - fullname
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        fullName:
+          type: string
+    LoginDTO:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+
+    # Entities
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        status:
+          type: string
+          enum: [active, restricted]
+        role:
+          type: string
+          enum: [admin, customer]
+        createdAt:
+          type: string
+          format: date-time
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: float
+        stockQuantity:
+          type: integer
+
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        product:
+          $ref: '#/components/schemas/Product'
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        totalAmount:
+          type: number
+          format: float
+        status:
+          type: string
+          enum: [pending, shipped, delivered, cancelled]
+        createdAt:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        priceAtPurchase:
+          type: number
+          format: float
+
+    # Product DTOs
+    ProductCreateDTO:
+      type: object
+      required:
+        - code
+        - name
+        - price
+        - stockQuantity
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          minimum: 0
+        stockQuantity:
+          type: integer
+          minimum: 0
+
+    ProductUpdateDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        stockQuantity:
+          type: integer
+
+    StockUpdateDTO:
+      type: object
+      required:
+        - quantity
+      properties:
+        quantity:
+          type: integer
+          description: New stock quantity
+
+    # Cart DTOs
+    CartAddDTO:
+      type: object
+      required:
+        - productId
+        - quantity
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+
+    # Order DTOs
+    OrderStatusUpdateDTO:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [pending, shipped, delivered, cancelled]
+
+    # Payment DTOs
+    PaymentInitiateDTO:
+      type: object
+      required:
+        - orderId
+      properties:
+        orderId:
+          type: string
+          format: uuid
+
+    PaymentResponse:
+      type: object
+      properties:
+        gatewayUrl:
+          type: string
+
+    PaymentCallbackDTO:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        status:
+          type: string
+        orderId:
+          type: string
+    PaymentValidateDTO:
+      type: object
+      required:
+        - transactionId
+      properties:
+        transactionId:
+          type: string
