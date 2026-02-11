@@ -1,4 +1,4 @@
-type InitDataRequest = {
+export type InitDataRequest = {
   total_amount: number;
   currency: string;
   cus_phone: string;

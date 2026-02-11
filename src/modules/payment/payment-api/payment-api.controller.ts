@@ -1,12 +1,15 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   Patch,
   Post,
   Query,
+  type RawBodyRequest,
   Req,
   Res,
 } from '@nestjs/common';
@@ -79,5 +82,21 @@ export class PaymentApiController {
       body,
     );
     res.redirect(url);
+  }
+  @Public()
+  @Post('callback/stripe/webhook')
+  async stripeWebhook(
+    @Headers('stripe-signature') signature: string,
+    @Req() req: RawBodyRequest<Request>, // Custom type for rawBody
+  ) {
+    if (!signature) {
+      throw new BadRequestException('Missing stripe-signature header');
+    }
+
+    await this.paymentApiService.handleCallback('stripe', {
+      rawBody: req.rawBody as any,
+      signature,
+    });
+    return { received: true };
   }
 }

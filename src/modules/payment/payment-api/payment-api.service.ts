@@ -109,12 +109,11 @@ export class PaymentApiService {
 
   async handleCallback(
     provider: string,
-    body: SslcommerzCallbackDto,
+    body:
+      | SslcommerzCallbackDto
+      | { rawBody: Buffer<ArrayBufferLike> | undefined; signature: string },
   ): Promise<{ url: string; tran_id: string }> {
-    if (provider === 'sslcommerz') {
-      const strategy = this.paymentFactory.getStrategy(provider as any);
-      return strategy.handleCallback(body, this);
-    }
-    throw new Error('Invalid payment provider');
+    const strategy = this.paymentFactory.getStrategy(provider as any);
+    return strategy.handleCallback(body, this);
   }
 }

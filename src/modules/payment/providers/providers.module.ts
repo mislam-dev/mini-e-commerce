@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SslcomerzModule } from './sslcomerz/sslcomerz.module';
-import { StrapiModule } from './strapi/strapi.module';
+import { StripeModule } from './stripe/stripe.module';
 
 @Module({
   imports: [
@@ -20,7 +20,13 @@ import { StrapiModule } from './strapi/strapi.module';
         ipn_url: configService.getOrThrow<string>('sslcomerz.ipn_url'),
       }),
     }),
-    StrapiModule,
+    StripeModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret_key: configService.getOrThrow<string>('stripe.secret_key'),
+      }),
+    }),
   ],
+  exports: [SslcomerzModule, StripeModule],
 })
 export class ProvidersModule {}
