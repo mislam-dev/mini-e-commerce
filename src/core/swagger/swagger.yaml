@@ -815,10 +815,14 @@ components:
       type: object
       required:
         - orderId
+        - provider
       properties:
         orderId:
           type: string
           format: uuid
+        provider:
+          type: string
+          example: sslcommerz
 
     PaymentResponse:
       type: object

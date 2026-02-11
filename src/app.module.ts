@@ -8,11 +8,13 @@ import { JwtGuard } from './core/auth/guards/jwt.guard';
 import { RolesGuard } from './core/auth/guards/roles.guard';
 import { CoreModule } from './core/core.module';
 import { ModulesModule } from './modules/modules.module';
+import { PaymentApiModule } from './modules/payment/payment-api/payment-api.module';
 
 @Module({
   imports: [
     CoreModule,
     ModulesModule,
+    PaymentApiModule,
     CacheModule.registerAsync({
       isGlobal: true,
       useFactory: async () => {
