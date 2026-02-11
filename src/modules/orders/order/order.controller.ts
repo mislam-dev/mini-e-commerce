@@ -66,6 +66,14 @@ export class OrderController {
     return order;
   }
 
+  @Patch(':id/cancel')
+  @SetRoles(UserRole.ADMIN, UserRole.CUSTOMER)
+  async cancel(@Param('id') id: string, @CurrentUser() user: UserPayload) {
+    await this.orderService.cancel(id, user);
+
+    return { message: 'Order cancelled successfully!' };
+  }
+
   @Patch(':id/status')
   @SetRoles(UserRole.ADMIN)
   updateStatus(

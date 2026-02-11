@@ -383,6 +383,36 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /order/{id}/cancel:
+    patch:
+      summary: Cancel order
+      tags: [Order]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Order cannot be cancelled (e.g. already shipped)
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /order/{id}/status:
     patch:
       summary: Update order status (Admin only)

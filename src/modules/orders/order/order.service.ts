@@ -1,13 +1,24 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   BadRequestException,
+  ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import type { Cache } from 'cache-manager';
+import { UserService } from 'src/core/user/user.service';
 import { CartService } from 'src/modules/cart/cart.service';
 import { DataSource, Repository } from 'typeorm';
 import { PaginationDto } from '../../../common/pagination/pagination.dto';
-import { User } from '../../../core/user/entities/user.entity';
+import { UserPayload } from '../../../core/auth/decorators/user.decorator';
+import {
+  User,
+  UserRole,
+  UserStatus,
+} from '../../../core/user/entities/user.entity';
 import { Cart } from '../../cart/entities/cart.entity';
 import { Product } from '../../product/entities/product.entity';
 import { OrderItem } from '../order-item/entities/order-item.entity';
@@ -17,14 +28,33 @@ import { Order, OrderStatus } from './entities/order.entity';
 
 @Injectable()
 export class OrderService {
+  private cancelOrderCountCacheKey = 'cancel-order-count';
+  private cancelOrderCountCacheTTL = 60 * 60 * 24;
   constructor(
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     private readonly dataSource: DataSource,
     private readonly cartService: CartService,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
+    private readonly configService: ConfigService,
+    private readonly userService: UserService,
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto) {
+    const cancelCount = await this.getCancelOrderCount(userId);
+    const cancelCountLimit =
+      this.configService.get<number>('order.cancel-count-limit') || 5;
+    if (cancelCount >= cancelCountLimit) {
+      const user = await this.userService.updateStatus(
+        userId,
+        UserStatus.ORDER_RESTRICTED,
+      );
+      throw new BadRequestException(
+        `You have cancelled ${cancelCountLimit} orders. You are restricted to place new orders!`,
+      );
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -112,6 +142,86 @@ export class OrderService {
       throw new NotFoundException(`Order with ID ${id} not found`);
     }
     return order;
+  }
+
+  async cancel(id: string, user: UserPayload) {
+    const order = await this.findOne(id);
+
+    if (user['role'] !== UserRole.ADMIN && order.userId !== user.sub) {
+      throw new ForbiddenException('You are not allowed to cancel this order');
+    }
+
+    if (order.status === OrderStatus.CANCELLED) {
+      throw new BadRequestException('Order is already cancelled');
+    }
+
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('Only pending orders can be cancelled');
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const item of order.items) {
+        await queryRunner.manager.increment(
+          Product,
+          { id: item.productId },
+          'stockQuantity',
+          item.quantity,
+        );
+      }
+
+      await queryRunner.manager.update(
+        Order,
+        { id: order.id },
+        { status: OrderStatus.CANCELLED },
+      );
+
+      await queryRunner.commitTransaction();
+
+      order.status = OrderStatus.CANCELLED;
+
+      await this.setOrUpdateCancelOrderCount(user.sub);
+
+      return order;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  private async setOrUpdateCancelOrderCount(userId: string) {
+    let updateCount = 1;
+    let ttl = this.cancelOrderCountCacheTTL;
+
+    const count = await this.cacheManager.get(
+      `${this.cancelOrderCountCacheKey}:${userId}`,
+    );
+
+    if (count) {
+      ttl = (await this.cacheManager.ttl(
+        `${this.cancelOrderCountCacheKey}:${userId}`,
+      ))!;
+
+      updateCount = Number(count) + 1;
+    }
+
+    return this.cacheManager.set(
+      `${this.cancelOrderCountCacheKey}:${userId}`,
+      updateCount,
+      ttl,
+    );
+  }
+  private async getCancelOrderCount(userId: string) {
+    const count = await this.cacheManager.get(
+      `${this.cancelOrderCountCacheKey}:${userId}`,
+    );
+
+    return Number(count) || 0;
   }
 
   async updateStatus(id: string, status: OrderStatus) {
