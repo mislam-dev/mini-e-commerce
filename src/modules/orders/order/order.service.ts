@@ -42,14 +42,15 @@ export class OrderService {
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto) {
+    const findUser = await this.userService.findOne(userId);
+    if (findUser.status === UserStatus.ORDER_RESTRICTED) {
+      throw new BadRequestException('You are restricted to place new orders!');
+    }
     const cancelCount = await this.getCancelOrderCount(userId);
     const cancelCountLimit =
       this.configService.get<number>('order.cancel-count-limit') || 5;
     if (cancelCount >= cancelCountLimit) {
-      const user = await this.userService.updateStatus(
-        userId,
-        UserStatus.ORDER_RESTRICTED,
-      );
+      await this.userService.updateStatus(userId, UserStatus.ORDER_RESTRICTED);
       throw new BadRequestException(
         `You have cancelled ${cancelCountLimit} orders. You are restricted to place new orders!`,
       );
