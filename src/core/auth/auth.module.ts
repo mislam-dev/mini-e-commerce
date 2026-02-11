@@ -15,12 +15,13 @@ import { LocalStrategies } from './strategies/local.strategies';
     UserModule,
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
-        secret: configService.getOrThrow<string>('JWT_SECRET'),
+        secret: configService.getOrThrow<string>('auth.jwtSecret'),
         signOptions: { expiresIn: '1d' },
       }),
       inject: [ConfigService],
     }),
   ],
   controllers: [AuthController],
+  exports: [AuthService, LocalStrategies, JWTStrategies],
 })
 export class AuthModule {}
