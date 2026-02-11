@@ -8,9 +8,9 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { PaginationDto } from 'src/common/pagination/pagination.dto';
 import { SetRoles } from 'src/core/auth/decorators/set-roles.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
-import { PaginationDto } from './dto/pagination.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserRole } from './entities/user.entity';
 import { UserService } from './user.service';
