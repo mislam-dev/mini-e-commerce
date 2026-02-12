@@ -3,14 +3,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: dev
-    container_name: mini_ecom_api
+      target: production
+    container_name: mini_ecom_api_prod
     ports:
       - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
     environment:
+      - NODE_ENV=production
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USERNAME=postgres
@@ -25,45 +23,43 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    command: pnpm run start:dev
     networks:
-      - mini_ecom_network
+      - mini_ecom_prod_network
+    restart: always
 
   postgres:
     image: postgres:16-alpine
-    container_name: mini_ecom_db
+    container_name: mini_ecom_db_prod
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: mini_ecom
-    ports:
-      - "5432:5432"
     volumes:
-      - mini_ecom_data:/var/lib/postgresql/data
+      - mini_ecom_prod_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - mini_ecom_network
+      - mini_ecom_prod_network
+    restart: always
 
   redis:
     image: redis/redis-stack:latest
-    container_name: mini_ecom_redis
+    container_name: mini_ecom_redis_prod
     ports:
       - "6379:6379"
-      - "8002:8001"
     volumes:
-      - mini_ecom_redis_data:/data
+      - mini_ecom_prod_redis_data:/data
     restart: always
     networks:
-      - mini_ecom_network
+      - mini_ecom_prod_network
 
 volumes:
-  mini_ecom_data:
-  mini_ecom_redis_data:
+  mini_ecom_prod_data:
+  mini_ecom_prod_redis_data:
 
 networks:
-  mini_ecom_network:
+  mini_ecom_prod_network:
     driver: bridge

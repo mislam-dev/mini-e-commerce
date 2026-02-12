@@ -3,6 +3,7 @@ import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { authConfig } from './auth.config';
 import { databaseConfig } from './database.config';
 import { paymentFrontendConfig } from './payment-frontend.config';
+import { redisConfig } from './redis.config';
 import { sslConfig } from './sslcomerz.config';
 import { stripeConfig } from './strIpe.config';
 @Module({
@@ -15,6 +16,7 @@ import { stripeConfig } from './strIpe.config';
         sslConfig,
         paymentFrontendConfig,
         stripeConfig,
+        redisConfig,
       ],
     }),
   ],
