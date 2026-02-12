@@ -3,20 +3,18 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Put,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { PaginationDto } from 'src/common/pagination/pagination.dto';
 import { Public } from 'src/core/auth/decorators/public.decorator';
+import { UserRole } from 'src/core/user/entities/user.entity';
 import { SetRoles } from '../../core/auth/decorators/set-roles.decorator';
-import { JwtGuard } from '../../core/auth/guards/jwt.guard';
-import { } from '../../core/auth/guards/roles.guard';
+import {} from '../../core/auth/guards/roles.guard';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { UpdateStockDto } from './dto/update-stock.dto';
@@ -27,8 +25,7 @@ export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   @Post()
-  @UseGuards(JwtGuard)
-  @SetRoles('admin')
+  @SetRoles(UserRole.ADMIN)
   create(@Body() createProductDto: CreateProductDto) {
     return this.productService.create(createProductDto);
   }
@@ -46,7 +43,7 @@ export class ProductController {
   }
 
   @Put(':id')
-  @SetRoles('admin')
+  @SetRoles(UserRole.ADMIN)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
@@ -55,16 +52,13 @@ export class ProductController {
   }
 
   @Delete(':id')
-  @HttpCode(204)
-  @UseGuards(JwtGuard)
-  @SetRoles('admin')
+  @SetRoles(UserRole.ADMIN)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.productService.remove(id);
   }
 
   @Patch(':id/stock')
-  @UseGuards(JwtGuard)
-  @SetRoles('admin')
+  @SetRoles(UserRole.ADMIN)
   updateStock(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateStockDto: UpdateStockDto,
