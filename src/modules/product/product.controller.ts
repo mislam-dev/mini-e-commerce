@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -44,6 +46,7 @@ export class ProductController {
 
   @Put(':id')
   @SetRoles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.ACCEPTED)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateProductDto: UpdateProductDto,
@@ -53,12 +56,14 @@ export class ProductController {
 
   @Delete(':id')
   @SetRoles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.productService.remove(id);
   }
 
   @Patch(':id/stock')
   @SetRoles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.ACCEPTED)
   updateStock(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateStockDto: UpdateStockDto,

@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+} from '@nestjs/common';
 import type { UserPayload } from '../../core/auth/decorators/user.decorator';
 import { User as CurrentUser } from '../../core/auth/decorators/user.decorator';
 import { CartService } from './cart.service';
@@ -22,6 +31,7 @@ export class CartController {
   }
 
   @Delete(':productId')
+  @HttpCode(HttpStatus.NO_CONTENT)
   remove(
     @CurrentUser() user: UserPayload,
     @Param('productId') productId: string,

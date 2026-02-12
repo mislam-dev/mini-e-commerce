@@ -5,6 +5,8 @@ import {
   Delete,
   Get,
   Headers,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -50,6 +52,7 @@ export class PaymentApiController {
   }
 
   @Patch(':id')
+  @HttpCode(HttpStatus.ACCEPTED)
   update(
     @Param('id') id: string,
     @Body() updatePaymentApiDto: UpdatePaymentApiDto,
@@ -58,6 +61,7 @@ export class PaymentApiController {
   }
 
   @SetRoles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.paymentApiService.remove(id);

@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Post,
   Request,
   UseGuards,
@@ -18,12 +20,14 @@ export class AuthController {
 
   @Public()
   @UseGuards(LocalAuthGuard)
+  @HttpCode(HttpStatus.OK)
   @Post('/login')
   login(@Request() req) {
     return this.authService.login(req.user);
   }
 
   @Public()
+  @HttpCode(HttpStatus.CREATED)
   @Post('/register')
   async register(@Body() createUserDto: CreateUserDto) {
     await this.authService.register(createUserDto);

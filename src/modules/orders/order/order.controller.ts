@@ -3,6 +3,8 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -67,6 +69,7 @@ export class OrderController {
   }
 
   @Patch(':id/cancel')
+  @HttpCode(HttpStatus.ACCEPTED)
   @SetRoles(UserRole.ADMIN, UserRole.CUSTOMER)
   async cancel(@Param('id') id: string, @CurrentUser() user: UserPayload) {
     await this.orderService.cancel(id, user);
@@ -75,6 +78,7 @@ export class OrderController {
   }
 
   @Patch(':id/status')
+  @HttpCode(HttpStatus.ACCEPTED)
   @SetRoles(UserRole.ADMIN)
   updateStatus(
     @Param('id') id: string,
