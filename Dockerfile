@@ -14,7 +14,7 @@ COPY package.json pnpm-lock.yaml ./
 FROM base AS dev
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY . .
-CMD ["pnpm", "run", "start:dev"]
+CMD ["sh", "-c", "pnpm run migration:run && pnpm run start:dev"]
 
 # Build Stage
 FROM base AS build
