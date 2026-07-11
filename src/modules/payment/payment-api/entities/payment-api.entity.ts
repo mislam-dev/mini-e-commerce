@@ -38,6 +38,9 @@ export class Payment {
   @Column({ type: 'text', nullable: true })
   extra: string;
 
+  @Column({ type: 'jsonb', name: 'raw_response' })
+  rawResponse: any;
+
   @Column({ type: 'text', nullable: true })
   notes: string;
 
