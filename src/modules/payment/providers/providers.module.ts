@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SslcomerzModule } from './sslcomerz/sslcomerz.module';
 import { StripeModule } from './stripe/stripe.module';
+import { BkashModule } from './bkash/bkash.module';
 
 @Module({
   imports: [
@@ -26,7 +27,19 @@ import { StripeModule } from './stripe/stripe.module';
         secret_key: configService.getOrThrow<string>('stripe.secret_key'),
       }),
     }),
+    BkashModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        baseUrl: configService.getOrThrow<string>('BKASH_BASE_URL'),
+        username: configService.getOrThrow<string>('BKASH_USERNAME'),
+        password: configService.getOrThrow<string>('BKASH_PASSWORD'),
+        appKey: configService.getOrThrow<string>('BKASH_APP_KEY'),
+        appSecret: configService.getOrThrow<string>('BKASH_APP_SECRET'),
+        callbackUrl: configService.getOrThrow<string>('BKASH_CALLBACK_URL'),
+        refundCallbackUrl: configService.get<string>('BKASH_REFUND_CALLBACK_URL'),
+      }),
+    }),
   ],
-  exports: [SslcomerzModule, StripeModule],
+  exports: [SslcomerzModule, StripeModule, BkashModule],
 })
 export class ProvidersModule {}
