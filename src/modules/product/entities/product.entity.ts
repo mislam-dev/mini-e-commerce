@@ -1,4 +1,15 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+export enum ProductStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+}
 
 @Entity('products')
 export class Product {
@@ -6,7 +17,10 @@ export class Product {
   id: string;
 
   @Column({ unique: true })
-  code: string;
+  sku: string;
+
+  @Column({ type: 'enum', enum: ProductStatus, default: ProductStatus.ACTIVE })
+  status: ProductStatus;
 
   @Column()
   name: string;
@@ -19,4 +33,10 @@ export class Product {
 
   @Column({ type: 'int', name: 'stock_quantity' })
   stockQuantity: number;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }
