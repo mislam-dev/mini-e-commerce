@@ -9,8 +9,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Cache } from 'cache-manager';
-import { UserService } from 'src/core/user/user.service';
-import { CartService } from 'src/modules/cart/cart.service';
+import { UserService } from '../../../core/user/user.service';
+import { CartService } from '../../cart/cart.service';
 import { DataSource, Repository } from 'typeorm';
 import { PaginationDto } from '../../../common/pagination/pagination.dto';
 import { UserPayload } from '../../../core/auth/decorators/user.decorator';

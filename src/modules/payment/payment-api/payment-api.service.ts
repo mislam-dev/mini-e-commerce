@@ -50,6 +50,7 @@ export class PaymentApiService {
       orderId,
       status: PaymentStatus.PENDING,
       transactionId: p.tran_id,
+      rawResponse: p,
     });
 
     const paymentSaved = await this.paymentRepository.save(payment);
