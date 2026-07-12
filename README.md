@@ -111,23 +111,38 @@ erDiagram
     PRODUCT ||--o{ CART : contained_in
     PRODUCT ||--o{ ORDER_ITEM : includes
     ORDER ||--|{ ORDER_ITEM : consists_of
+    ORDER ||--o{ PAYMENT : has
+    CATEGORY ||--o{ CATEGORY : parent_of
+    CATEGORY ||--o{ PRODUCT : contains
 
     USER {
         string id PK "UUID"
         string email "unique"
+        string full_name
         string password
         string status "active | restricted | order_restricted"
         string role "admin | customer"
         datetime created_at
+        datetime updated_at
     }
 
     PRODUCT {
         string id PK "UUID"
-        string code "unique"
+        string category_id FK
+        string sku "unique"
+        string status "active | inactive"
         string name
         string description
         float price
         int stock_quantity
+        datetime created_at
+        datetime updated_at
+    }
+
+    CATEGORY {
+        string id PK "UUID"
+        string name
+        string parent_id FK
     }
 
     CART {
@@ -135,6 +150,8 @@ erDiagram
         string user_id FK
         string product_id FK
         int quantity
+        datetime created_at
+        datetime updated_at
     }
 
     ORDER {
@@ -151,6 +168,19 @@ erDiagram
         string product_id FK
         int quantity
         float price_at_purchase
+    }
+
+    PAYMENT {
+        string id PK "UUID"
+        string order_id FK
+        string status "pending | progress | successful | failed"
+        string extra
+        jsonb raw_response
+        string notes
+        string transaction_id
+        string provider
+        datetime created_at
+        datetime updated_at
     }
 ```
 

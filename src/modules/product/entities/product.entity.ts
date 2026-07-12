@@ -2,9 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Category } from '../../category/entities/category.entity';
 
 export enum ProductStatus {
   ACTIVE = 'active',
@@ -25,6 +27,9 @@ export class Product {
   @Column()
   name: string;
 
+  @Column({ name: 'category_id' })
+  categoryId: string;
+
   @Column()
   description: string;
 
@@ -39,4 +44,7 @@ export class Product {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @ManyToOne(() => Category, (c) => c.id)
+  category: Category;
 }

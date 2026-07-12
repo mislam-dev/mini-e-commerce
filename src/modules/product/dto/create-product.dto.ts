@@ -1,6 +1,7 @@
-import { IsEnum, IsNumber, IsString, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsString, IsUUID, Min } from 'class-validator';
 
 import { IsProductSkuUnique } from '../decorators/is-product-sku-unique.decorator';
+import { IsCategoryExists } from '../../category/decorators/is-category-exists.decorator';
 import { ProductStatus } from '../entities/product.entity';
 
 export class CreateProductDto {
@@ -13,6 +14,10 @@ export class CreateProductDto {
 
   @IsString()
   name: string;
+
+  @IsUUID()
+  @IsCategoryExists()
+  categoryId: string;
 
   @IsString()
   description: string;
