@@ -505,6 +505,201 @@ paths:
           description: Payment validated successfully
         '400':
           $ref: '#/components/responses/BadRequest'
+  /payment:
+    get:
+      summary: Get list of payments
+      tags: [Payment]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of payments
+  /payment/{id}:
+    patch:
+      summary: Update payment details
+      tags: [Payment]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Payment ID
+      responses:
+        '200':
+          description: Payment updated successfully
+    delete:
+      summary: Delete a payment
+      tags: [Payment]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Payment ID
+      responses:
+        '200':
+          description: Payment deleted successfully
+  /payment/callback/sslcommerz/success:
+    post:
+      summary: SSLCommerz Success Webhook
+      tags: [Payment Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SslcommerzCallbackDto'
+      responses:
+        '200':
+          description: Payment successful
+  /payment/callback/sslcommerz/failure:
+    post:
+      summary: SSLCommerz Failure Webhook
+      tags: [Payment Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SslcommerzCallbackDto'
+      responses:
+        '200':
+          description: Payment failed
+  /payment/callback/stripe/webhook:
+    post:
+      summary: Stripe Webhook
+      tags: [Payment Webhooks]
+      responses:
+        '200':
+          description: Webhook received
+  /payment/callback/bkash/webhook:
+    get:
+      summary: bKash Callback Webhook (GET)
+      tags: [Payment Webhooks]
+      parameters:
+        - in: query
+          name: paymentID
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook received
+    post:
+      summary: bKash IPN Webhook (POST)
+      tags: [Payment Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BkashCallbackDto'
+      responses:
+        '200':
+          description: Webhook received
+  /category:
+    get:
+      summary: Get category tree
+      tags: [Category]
+      responses:
+        '200':
+          description: Category tree retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryTree'
+    post:
+      summary: Create a new category
+      tags: [Category]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryDto'
+      responses:
+        '201':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+  /category/{id}:
+    get:
+      summary: Get a single category
+      tags: [Category]
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Category ID
+      responses:
+        '200':
+          description: Category retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+    patch:
+      summary: Update a category
+      tags: [Category]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Category ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryDto'
+      responses:
+        '200':
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+    delete:
+      summary: Delete a category
+      tags: [Category]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Category ID
+      responses:
+        '200':
+          description: Category deleted successfully
 
 components:
   securitySchemes:
@@ -845,4 +1040,68 @@ components:
         - transactionId
       properties:
         transactionId:
+          type: string
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+    CategoryTree:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryTree'
+    CreateCategoryDto:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+    UpdateCategoryDto:
+      type: object
+      properties:
+        name:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+    BkashCallbackDto:
+      type: object
+      properties:
+        paymentID:
+          type: string
+        status:
+          type: string
+        signature:
+          type: string
+    SslcommerzCallbackDto:
+      type: object
+      properties:
+        tran_id:
+          type: string
+        val_id:
+          type: string
+        amount:
+          type: string
+        status:
           type: string
