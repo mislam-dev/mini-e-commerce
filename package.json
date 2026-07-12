@@ -21,7 +21,8 @@
     "typeorm": "ts-node ./node_modules/typeorm/cli",
     "migration:generate": "sh -c 'npm run typeorm -- -d ./typeorm.config.ts migration:generate src/core/database/migrations/$0'",
     "migration:run": "npm run typeorm -- -d ./typeorm.config.ts migration:run",
-    "migration:revert": "npm run typeorm -- -d ./typeorm.config.ts migration:revert"
+    "migration:revert": "npm run typeorm -- -d ./typeorm.config.ts migration:revert",
+    "seed": "ts-node -r tsconfig-paths/register src/seed.ts"
   },
   "dependencies": {
     "-": "^0.0.1",
