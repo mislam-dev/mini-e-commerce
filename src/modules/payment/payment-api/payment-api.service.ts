@@ -3,9 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { PaginationDto } from 'src/common/pagination/pagination.dto';
 import { UserService } from 'src/core/user/user.service';
 import { OrderService } from 'src/modules/orders/order/order.service';
+import { OrderStatus } from 'src/modules/orders/order/entities/order.entity';
 import { Repository } from 'typeorm';
 import { PaymentFactory } from '../payment.factory';
 import { CreatePaymentApiDto } from './dto/create-payment-api.dto';
+import { BkashCallbackDto } from './dto/bkash-callback.dto';
 import { SslcommerzCallbackDto } from './dto/sslcommerz-callback.dto';
 import { UpdatePaymentApiDto } from './dto/update-payment-api.dto';
 import { Payment, PaymentStatus } from './entities/payment-api.entity';
@@ -111,9 +113,14 @@ export class PaymentApiService {
     provider: string,
     body:
       | SslcommerzCallbackDto
+      | BkashCallbackDto
       | { rawBody: Buffer<ArrayBufferLike> | undefined; signature: string },
   ): Promise<{ url: string; tran_id: string }> {
     const strategy = this.paymentFactory.getStrategy(provider as any);
     return strategy.handleCallback(body, this);
+  }
+
+  async updateOrderStatus(orderId: string, status: OrderStatus) {
+    return this.orderService.updateStatus(orderId, status);
   }
 }

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { customAlphabet } from 'nanoid';
+import { OrderStatus } from '../../../orders/order/entities/order.entity';
 import {
   InitDataRequest,
   PaymentStrategy,
@@ -31,7 +32,7 @@ export class BkashStrategy implements PaymentStrategy {
   async init(data: InitDataRequest): Promise<{ url: string; tran_id: string }> {
     try {
       const tran_id = this.generateTranId();
-      
+
       const paymentResponse = await this.bkashService.createPayment({
         payerReference: tran_id,
         amount: data.total_amount.toString(),
@@ -46,13 +47,17 @@ export class BkashStrategy implements PaymentStrategy {
       };
     } catch (error) {
       this.logger.error(`Failed to init bKash payment: ${error.message}`);
-      throw new InternalServerErrorException('Failed to initialize bKash payment');
+      throw new InternalServerErrorException(
+        'Failed to initialize bKash payment',
+      );
     }
   }
 
   async checkout(amount: number): Promise<string> {
     // Delegate to init if a direct checkout call is made, though it typically requires full InitDataRequest
-    throw new Error('Direct checkout not supported for bKash. Use init() instead.');
+    throw new Error(
+      'Direct checkout not supported for bKash. Use init() instead.',
+    );
   }
 
   async validate(data: { paymentID: string }): Promise<boolean> {
@@ -72,7 +77,9 @@ export class BkashStrategy implements PaymentStrategy {
     paymentService: PaymentApiService,
   ): Promise<{ url: string; tran_id: string }> {
     const { paymentID, status } = data;
-    this.logger.log(`Handling bKash callback for Payment ID: ${paymentID} with status: ${status}`);
+    this.logger.log(
+      `Handling bKash callback for Payment ID: ${paymentID} with status: ${status}`,
+    );
 
     const handlers: Record<string, Function> = {
       success: this.handleBkashSuccess,
@@ -83,7 +90,9 @@ export class BkashStrategy implements PaymentStrategy {
     const handler = handlers[status?.toLowerCase()];
 
     if (!handler) {
-      throw new InternalServerErrorException(`Invalid bKash payment status: ${status}`);
+      throw new InternalServerErrorException(
+        `Invalid bKash payment status: ${status}`,
+      );
     }
 
     const url = await handler.call(this, paymentID, paymentService);
@@ -108,6 +117,7 @@ export class BkashStrategy implements PaymentStrategy {
       const executeResponse = await this.bkashService.executePayment(paymentID);
 
       payment.status = PaymentStatus.SUCCESSFUL;
+      payment.rawResponse = executeResponse;
       payment.extra = JSON.stringify(executeResponse);
       payment.notes = 'Payment successful via bKash';
       await paymentService.update(payment.id, payment);
@@ -122,6 +132,13 @@ export class BkashStrategy implements PaymentStrategy {
       payment.status = PaymentStatus.FAILED;
       payment.notes = `Execution failed: ${error.message}`;
       await paymentService.update(payment.id, payment);
+
+      try {
+        await paymentService.updateOrderStatus(
+          payment.orderId,
+          OrderStatus.CANCELLED,
+        );
+      } catch (e) {}
 
       return (
         this.configService.get('paymentFrontend.failUrl') +
@@ -143,6 +160,13 @@ export class BkashStrategy implements PaymentStrategy {
     payment.notes = 'Payment failed via bKash';
     await paymentService.update(payment.id, payment);
 
+    try {
+      await paymentService.updateOrderStatus(
+        payment.orderId,
+        OrderStatus.CANCELLED,
+      );
+    } catch (e) {}
+
     return (
       this.configService.get('paymentFrontend.failUrl') +
       `?tran_id=${paymentID}&status=failure`
@@ -158,9 +182,17 @@ export class BkashStrategy implements PaymentStrategy {
       throw new NotFoundException(`Payment with ID "${paymentID}" not found`);
     }
 
-    payment.status = PaymentStatus.FAILED; // Or CANCELLED if your enum supports it, matching existing SSLCommerz pattern
+    // payment cancel
+    payment.status = PaymentStatus.FAILED;
     payment.notes = 'Payment cancelled via bKash';
     await paymentService.update(payment.id, payment);
+
+    try {
+      await paymentService.updateOrderStatus(
+        payment.orderId,
+        OrderStatus.CANCELLED,
+      );
+    } catch (e) {}
 
     return (
       this.configService.get('paymentFrontend.cancelUrl') +
