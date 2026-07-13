@@ -40,7 +40,11 @@ export class CartService {
         );
       }
       existingCartItem.quantity = newQuantity;
-      return this.cartRepository.save(existingCartItem);
+      await this.cartRepository.save(existingCartItem);
+      return {
+        id: existingCartItem.id,
+        quantity: existingCartItem.quantity,
+      };
     }
 
     // Create new item
@@ -50,7 +54,11 @@ export class CartService {
       quantity,
     });
 
-    return this.cartRepository.save(cartItem);
+    await this.cartRepository.save(cartItem);
+    return {
+      id: cartItem.id,
+      quantity: cartItem.quantity,
+    };
   }
 
   async findAll(userId: string) {
@@ -58,7 +66,32 @@ export class CartService {
       where: { userId },
       relations: ['product'],
       order: { createdAt: 'DESC' },
+      select: {
+        id: true,
+        quantity: true,
+        product: {
+          id: true,
+          name: true,
+          price: true,
+          stockQuantity: true,
+        },
+      },
     });
+  }
+
+  async findOne(userId: string, productId: string) {
+    const result = await this.cartRepository.findOne({
+      where: { userId, productId },
+      relations: ['product'],
+      select: {
+        id: true,
+        quantity: true,
+      },
+    });
+    if (!result) {
+      throw new NotFoundException('Item not found in cart');
+    }
+    return result;
   }
 
   async remove(userId: string, productId: string) {
@@ -70,16 +103,5 @@ export class CartService {
     if (result.affected === 0) {
       throw new NotFoundException('Item not found in cart');
     }
-    return { message: 'Item removed from cart' };
-  }
-  async findOne(userId: string, productId: string) {
-    const result = await this.cartRepository.findOne({
-      where: { userId, productId },
-      relations: ['product'],
-    });
-    if (!result) {
-      throw new NotFoundException('Item not found in cart');
-    }
-    return result;
   }
 }

@@ -1,17 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { CartService } from './cart.service';
-import { ProductService } from '../product/product.service';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Cart } from './entities/cart.entity';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { ProductService } from '../product/product.service';
+import { CartService } from './cart.service';
+import { Cart } from './entities/cart.entity';
 
 describe('CartService', () => {
   let service: CartService;
-  let repository: Repository<Cart>;
-  let productService: ProductService;
 
-  const mockCartItem = { id: 'cart-id', userId: 'user-id', productId: 'product-id', quantity: 2 };
+  const mockCartItem = {
+    id: 'cart-id',
+    quantity: 2,
+  };
   const mockProduct = { id: 'product-id', stockQuantity: 10 };
 
   const mockCartRepository = {
@@ -36,48 +36,95 @@ describe('CartService', () => {
     }).compile();
 
     service = module.get<CartService>(CartService);
-    repository = module.get<Repository<Cart>>(getRepositoryToken(Cart));
-    productService = module.get<ProductService>(ProductService);
     jest.clearAllMocks();
   });
 
   describe('create', () => {
     it('should create a new cart item', async () => {
-      mockProductService.findOne.mockResolvedValue({ id: 'product-id', stockQuantity: 10 });
+      mockProductService.findOne.mockResolvedValue({
+        id: 'product-id',
+        stockQuantity: 10,
+      });
       mockCartRepository.findOne.mockResolvedValue(null);
 
-      const result = await service.create('user-id', { productId: 'product-id', quantity: 2 });
-      expect(mockCartRepository.create).toHaveBeenCalledWith({ userId: 'user-id', productId: 'product-id', quantity: 2 });
+      const result = await service.create('user-id', {
+        productId: 'product-id',
+        quantity: 2,
+      });
+      expect(mockCartRepository.create).toHaveBeenCalledWith({
+        userId: 'user-id',
+        productId: 'product-id',
+        quantity: 2,
+      });
       expect(mockCartRepository.save).toHaveBeenCalled();
       expect(result).toEqual(mockCartItem);
     });
 
     it('should throw exception if insufficient stock', async () => {
-      mockProductService.findOne.mockResolvedValue({ id: 'product-id', stockQuantity: 1 });
-      await expect(service.create('user-id', { productId: 'product-id', quantity: 2 })).rejects.toThrow(BadRequestException);
+      mockProductService.findOne.mockResolvedValue({
+        id: 'product-id',
+        stockQuantity: 1,
+      });
+      await expect(
+        service.create('user-id', { productId: 'product-id', quantity: 2 }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should update quantity if item already in cart', async () => {
-      mockProductService.findOne.mockResolvedValue({ id: 'product-id', stockQuantity: 10 });
-      mockCartRepository.findOne.mockResolvedValue({ ...mockCartItem, quantity: 2 });
-      mockCartRepository.save.mockResolvedValue({ ...mockCartItem, quantity: 4 });
+      mockProductService.findOne.mockResolvedValue({
+        id: 'product-id',
+        stockQuantity: 10,
+      });
+      mockCartRepository.findOne.mockResolvedValue({
+        ...mockCartItem,
+        quantity: 2,
+      });
+      mockCartRepository.save.mockResolvedValue({
+        ...mockCartItem,
+        quantity: 4,
+      });
 
-      const result = await service.create('user-id', { productId: 'product-id', quantity: 2 });
+      const result = await service.create('user-id', {
+        productId: 'product-id',
+        quantity: 2,
+      });
       expect(result.quantity).toBe(4);
     });
 
     it('should throw exception if updating quantity exceeds stock', async () => {
-      mockProductService.findOne.mockResolvedValue({ id: 'product-id', stockQuantity: 3 });
-      mockCartRepository.findOne.mockResolvedValue({ ...mockCartItem, quantity: 2 });
-      
-      await expect(service.create('user-id', { productId: 'product-id', quantity: 2 })).rejects.toThrow(BadRequestException);
+      mockProductService.findOne.mockResolvedValue({
+        id: 'product-id',
+        stockQuantity: 3,
+      });
+      mockCartRepository.findOne.mockResolvedValue({
+        ...mockCartItem,
+        quantity: 2,
+      });
+
+      await expect(
+        service.create('user-id', { productId: 'product-id', quantity: 2 }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('findAll', () => {
     it('should find all cart items for a user', async () => {
       const result = await service.findAll('user-id');
-      expect(mockCartRepository.find).toHaveBeenCalledWith({ where: { userId: 'user-id' }, relations: ['product'], order: { createdAt: 'DESC' } });
+      expect(mockCartRepository.find).toHaveBeenCalledWith({
+        where: { userId: 'user-id' },
+        relations: ['product'],
+        order: { createdAt: 'DESC' },
+        select: {
+          id: true,
+          product: {
+            id: true,
+            name: true,
+            price: true,
+            stockQuantity: true,
+          },
+          quantity: true,
+        },
+      });
       expect(result).toEqual([mockCartItem]);
     });
   });
@@ -91,7 +138,9 @@ describe('CartService', () => {
 
     it('should throw if not found', async () => {
       mockCartRepository.findOne.mockResolvedValue(null);
-      await expect(service.findOne('user-id', 'product-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('user-id', 'product-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -99,12 +148,18 @@ describe('CartService', () => {
     it('should remove a cart item', async () => {
       mockCartRepository.delete.mockResolvedValue({ affected: 1 });
       const result = await service.remove('user-id', 'product-id');
-      expect(result).toEqual({ message: 'Item removed from cart' });
+      expect(mockCartRepository.delete).toHaveBeenCalledWith({
+        userId: 'user-id',
+        productId: 'product-id',
+      });
+      expect(result).toEqual(undefined);
     });
 
     it('should throw if delete fails', async () => {
       mockCartRepository.delete.mockResolvedValue({ affected: 0 });
-      await expect(service.remove('user-id', 'product-id')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('user-id', 'product-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

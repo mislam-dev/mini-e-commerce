@@ -371,7 +371,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/CartItem'
+                  $ref: '#/components/schemas/CartItemResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:
@@ -391,7 +391,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CartItem'
+                $ref: '#/components/schemas/CartAddResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -925,22 +925,36 @@ components:
         stockQuantity:
           type: integer
 
-    CartItem:
+    CartItemResponse:
       type: object
       properties:
         id:
           type: string
           format: uuid
-        userId:
-          type: string
-          format: uuid
-        productId:
+        quantity:
+          type: integer
+        product:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            price:
+              type: number
+              format: float
+            stockQuantity:
+              type: integer
+
+    CartAddResponse:
+      type: object
+      properties:
+        id:
           type: string
           format: uuid
         quantity:
           type: integer
-        product:
-          $ref: '#/components/schemas/Product'
 
     Order:
       type: object

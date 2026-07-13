@@ -6,12 +6,17 @@ describe('CartController', () => {
   let controller: CartController;
   let service: CartService;
 
-  const mockCartItem = { id: 'cart-id', userId: 'user-id', productId: 'product-id', quantity: 2 };
-  
+  const mockCartItem = {
+    id: 'cart-id',
+    userId: 'user-id',
+    productId: 'product-id',
+    quantity: 2,
+  };
+
   const mockCartService = {
     create: jest.fn().mockResolvedValue(mockCartItem),
     findAll: jest.fn().mockResolvedValue([mockCartItem]),
-    remove: jest.fn().mockResolvedValue({ message: 'Item removed from cart' }),
+    remove: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -52,7 +57,7 @@ describe('CartController', () => {
       const req = { sub: 'user-id' } as any;
       const result = await controller.remove(req, 'product-id');
       expect(service.remove).toHaveBeenCalledWith('user-id', 'product-id');
-      expect(result).toEqual({ message: 'Item removed from cart' });
+      expect(result).toEqual(undefined);
     });
   });
 });
