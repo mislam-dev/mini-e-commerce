@@ -57,6 +57,45 @@ describe('BkashStrategy', () => {
     expect(strategy).toBeDefined();
   });
 
+  describe('init', () => {
+    it('should initialize payment and return url', async () => {
+      jest.spyOn(bkashService, 'createPayment').mockResolvedValue({ bkashURL: 'http://bkash', paymentID: 'PID123' } as any);
+      const result = await strategy.init({ total_amount: 100, currency: 'BDT' } as any);
+      expect(result.url).toBe('http://bkash');
+      expect(result.tran_id).toBe('PID123');
+    });
+
+    it('should throw InternalServerErrorException on error', async () => {
+      jest.spyOn(bkashService, 'createPayment').mockRejectedValue(new Error('error'));
+      await expect(strategy.init({ total_amount: 100 } as any)).rejects.toThrow(InternalServerErrorException);
+    });
+  });
+
+  describe('checkout', () => {
+    it('should throw error', async () => {
+      await expect(strategy.checkout(100)).rejects.toThrow('Direct checkout not supported for bKash. Use init() instead.');
+    });
+  });
+
+  describe('validate', () => {
+    it('should return true if completed', async () => {
+      jest.spyOn(bkashService, 'queryPayment').mockResolvedValue({ transactionStatus: 'Completed' } as any);
+      expect(await strategy.validate({ paymentID: '123' })).toBe(true);
+    });
+
+    it('should return false if not completed or error', async () => {
+      jest.spyOn(bkashService, 'queryPayment').mockResolvedValue({ transactionStatus: 'Pending' } as any);
+      expect(await strategy.validate({ paymentID: '123' })).toBe(false);
+
+      jest.spyOn(bkashService, 'queryPayment').mockRejectedValue(new Error());
+      expect(await strategy.validate({ paymentID: '123' })).toBe(false);
+    });
+
+    it('should return false if no paymentID', async () => {
+      expect(await strategy.validate({} as any)).toBe(false);
+    });
+  });
+
   describe('handleCallback', () => {
     it('should process success status, update raw_response, and return success url', async () => {
       const mockPayment = { id: 'payment1', orderId: 'order1', status: PaymentStatus.PENDING };
@@ -94,6 +133,37 @@ describe('BkashStrategy', () => {
       }));
       expect(paymentApiService.updateOrderStatus).toHaveBeenCalledWith('order1', OrderStatus.CANCELLED);
       expect(result).toEqual({ url: 'http://fail?tran_id=TRX123&status=failure', tran_id: 'TRX123' });
+    });
+
+    it('should process cancel status', async () => {
+      const mockPayment = { id: 'payment1', orderId: 'order1', status: PaymentStatus.PENDING };
+      jest.spyOn(paymentApiService, 'findOneByTranId').mockResolvedValue(mockPayment as any);
+      
+      const result = await strategy.handleCallback(
+        { paymentID: 'TRX123', status: 'cancel' },
+        paymentApiService,
+      );
+
+      expect(result.url).toBe('http://cancel?tran_id=TRX123&status=cancel');
+    });
+
+    it('should throw NotFoundException if payment not found on success', async () => {
+      jest.spyOn(paymentApiService, 'findOneByTranId').mockResolvedValue(null);
+      await expect(strategy.handleCallback({ paymentID: 'TRX123', status: 'success' }, paymentApiService)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException if payment not found on failure', async () => {
+      jest.spyOn(paymentApiService, 'findOneByTranId').mockResolvedValue(null);
+      await expect(strategy.handleCallback({ paymentID: 'TRX123', status: 'failure' }, paymentApiService)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should handle executePayment failure in success handler', async () => {
+      const mockPayment = { id: 'payment1', orderId: 'order1', status: PaymentStatus.PENDING };
+      jest.spyOn(paymentApiService, 'findOneByTranId').mockResolvedValue(mockPayment as any);
+      jest.spyOn(bkashService, 'executePayment').mockRejectedValue(new Error());
+      
+      const result = await strategy.handleCallback({ paymentID: 'TRX123', status: 'success' }, paymentApiService);
+      expect(result.url).toBe('http://fail?tran_id=TRX123&status=failure');
     });
 
     it('should throw InternalServerErrorException on invalid status', async () => {

@@ -120,4 +120,51 @@ describe('CategoryService', () => {
       expect(result).toEqual(savedCategory);
     });
   });
+
+  describe('findOne', () => {
+    it('should return a category if found', async () => {
+      const mockCategory = { id: '1', name: 'Test' };
+      jest.spyOn(categoryRepository, 'findOneBy').mockResolvedValue(mockCategory as any);
+      
+      const result = await service.findOne('1');
+      expect(categoryRepository.findOneBy).toHaveBeenCalledWith({ id: '1' });
+      expect(result).toEqual(mockCategory);
+    });
+
+    it('should throw exception if not found', async () => {
+      jest.spyOn(categoryRepository, 'findOneBy').mockResolvedValue(null);
+      await expect(service.findOne('1')).rejects.toThrow('Category with ID 1 not found');
+    });
+  });
+
+  describe('update', () => {
+    it('should update and clear cache', async () => {
+      const mockCategory = { id: '1', name: 'Test' };
+      const dto = { name: 'Updated' };
+      
+      jest.spyOn(service, 'findOne').mockResolvedValue(mockCategory as any);
+      jest.spyOn(categoryRepository, 'save').mockResolvedValue({ ...mockCategory, ...dto } as any);
+
+      const result = await service.update('1', dto as any);
+      
+      expect(cacheManager.del).toHaveBeenCalledWith('CATEGORY_TREE');
+      expect(categoryRepository.save).toHaveBeenCalled();
+      expect(result.name).toEqual('Updated');
+    });
+  });
+
+  describe('remove', () => {
+    it('should remove and clear cache', async () => {
+      jest.spyOn(categoryRepository, 'delete').mockResolvedValue({ affected: 1 } as any);
+      
+      await service.remove('1');
+      expect(cacheManager.del).toHaveBeenCalledWith('CATEGORY_TREE');
+      expect(categoryRepository.delete).toHaveBeenCalledWith('1');
+    });
+
+    it('should throw exception if not found', async () => {
+      jest.spyOn(categoryRepository, 'delete').mockResolvedValue({ affected: 0 } as any);
+      await expect(service.remove('1')).rejects.toThrow('Category with ID 1 not found');
+    });
+  });
 });

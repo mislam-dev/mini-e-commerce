@@ -96,9 +96,25 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.(t|j)s",
+      "!**/*.module.(t|j)s",
+      "!**/*.entity.(t|j)s",
+      "!**/*.dto.(t|j)s",
+      "!**/*.constant.(t|j)s",
+      "!**/main.(t|j)s",
+      "!**/seed/**",
+      "!**/*.config.(t|j)s",
+      "!**/database/migrations/**",
+      "!**/app.controller.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1",
+      "^nanoid$": "<rootDir>/common/mocks/nanoid.js"
+    },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!nanoid/)"
+    ]
   }
 }
