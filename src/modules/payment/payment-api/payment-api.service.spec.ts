@@ -1,18 +1,22 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { PaymentApiService } from './payment-api.service';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Payment, PaymentStatus } from './entities/payment-api.entity';
-import { PaymentFactory } from '../payment.factory';
-import { OrderService } from '../../orders/order/order.service';
-import { UserService } from '../../../core/user/user.service';
 import { NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { UserService } from '../../../core/user/user.service';
+import { OrderService } from '../../orders/order/order.service';
+import { PaymentFactory } from '../payment.factory';
+import { Payment, PaymentStatus } from './entities/payment-api.entity';
+import { PaymentApiService } from './payment-api.service';
 
 describe('PaymentApiService', () => {
   let service: PaymentApiService;
 
-  const mockPayment = { id: 'payment-id', status: PaymentStatus.PENDING, transactionId: 'tran-id' };
-  
+  const mockPayment = {
+    id: 'payment-id',
+    status: PaymentStatus.PENDING,
+    transactionId: 'tran-id',
+  };
+
   const mockRepository = {
     create: jest.fn().mockReturnValue(mockPayment),
     save: jest.fn().mockResolvedValue(mockPayment),
@@ -22,8 +26,12 @@ describe('PaymentApiService', () => {
   };
 
   const mockStrategy = {
-    init: jest.fn().mockResolvedValue({ url: 'http://pay', tran_id: 'tran-id' }),
-    handleCallback: jest.fn().mockResolvedValue({ url: 'http://redirect', tran_id: 'tran-id' }),
+    init: jest
+      .fn()
+      .mockResolvedValue({ url: 'http://pay', tran_id: 'tran-id' }),
+    handleCallback: jest
+      .fn()
+      .mockResolvedValue({ url: 'http://redirect', tran_id: 'tran-id' }),
   };
 
   const mockFactory = {
@@ -31,11 +39,19 @@ describe('PaymentApiService', () => {
   };
 
   const mockOrderService = {
-    findOne: jest.fn().mockResolvedValue({ id: 'order-id', userId: 'user-id', totalAmount: 100 }),
+    findOne: jest.fn().mockResolvedValue({
+      id: 'order-id',
+      userId: 'user-id',
+      totalAmount: 100,
+    }),
   };
 
   const mockUserService = {
-    findOne: jest.fn().mockResolvedValue({ id: 'user-id', fullName: 'Test User', email: 'test@test.com' }),
+    findOne: jest.fn().mockResolvedValue({
+      id: 'user-id',
+      fullName: 'Test User',
+      email: 'test@test.com',
+    }),
   };
 
   const mockQueryRunner = {
@@ -89,13 +105,18 @@ describe('PaymentApiService', () => {
 
     it('should throw if order not found', async () => {
       mockOrderService.findOne.mockResolvedValueOnce(null);
-      await expect(service.create({ provider: 'bkash', orderId: 'order-id' } as any)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.create({ provider: 'bkash', orderId: 'order-id' } as any),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('findAll', () => {
     it('should find all payments', async () => {
-      const result = await service.findAll({ limit: 10, offset: 0 }, 'order-id');
+      const result = await service.findAll(
+        { limit: 10, offset: 0 },
+        'order-id',
+      );
       expect(mockRepository.findAndCount).toHaveBeenCalled();
       expect(result.total).toBe(1);
     });
@@ -109,21 +130,27 @@ describe('PaymentApiService', () => {
 
     it('should throw if not found', async () => {
       mockRepository.findOne.mockResolvedValueOnce(null);
-      await expect(service.findOne('payment-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('payment-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('findOneByTranId', () => {
     it('should find payment by transaction id', async () => {
       const result = await service.findOneByTranId('tran-id');
-      expect(mockRepository.findOne).toHaveBeenCalledWith({ where: { transactionId: 'tran-id' } });
+      expect(mockRepository.findOne).toHaveBeenCalledWith({
+        where: { transactionId: 'tran-id' },
+      });
       expect(result).toEqual(mockPayment);
     });
   });
 
   describe('update', () => {
     it('should update a payment', async () => {
-      const result = await service.update('payment-id', { status: PaymentStatus.SUCCESSFUL });
+      const result = await service.update('payment-id', {
+        status: PaymentStatus.SUCCESSFUL,
+      });
       expect(mockRepository.save).toHaveBeenCalled();
       expect(result).toEqual(mockPayment);
     });
@@ -137,7 +164,9 @@ describe('PaymentApiService', () => {
 
     it('should throw if delete fails', async () => {
       mockRepository.delete.mockResolvedValueOnce({ affected: 0 });
-      await expect(service.remove('payment-id')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('payment-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -151,10 +180,31 @@ describe('PaymentApiService', () => {
 
   describe('markPaymentSuccess', () => {
     it('should successfully mark payment as successful', async () => {
-      mockQueryRunner.manager.findOne.mockResolvedValueOnce({ id: 'payment-id', status: PaymentStatus.PENDING });
-      mockQueryRunner.manager.save.mockResolvedValueOnce({ id: 'payment-id', status: PaymentStatus.SUCCESSFUL });
-      
-      const result = await service.markPaymentSuccess('tran-id', { data: 'test' }, 'notes');
+      mockQueryRunner.manager.findOne
+        .mockResolvedValueOnce({
+          id: 'payment-id',
+          orderId: 'order-id',
+          status: PaymentStatus.PENDING,
+        })
+        .mockResolvedValueOnce({
+          id: 'order-id',
+          status: 'PENDING',
+        });
+      mockQueryRunner.manager.save
+        .mockResolvedValueOnce({
+          id: 'payment-id',
+          status: PaymentStatus.SUCCESSFUL,
+        })
+        .mockResolvedValueOnce({
+          id: 'order-id',
+          status: 'PAID',
+        });
+
+      const result = await service.markPaymentSuccess(
+        'tran-id',
+        { data: 'test' },
+        'notes',
+      );
       expect(mockQueryRunner.manager.findOne).toHaveBeenCalled();
       expect(mockQueryRunner.manager.save).toHaveBeenCalled();
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
@@ -163,9 +213,12 @@ describe('PaymentApiService', () => {
     });
 
     it('should return early if payment already successful', async () => {
-      const existingPayment = { id: 'payment-id', status: PaymentStatus.SUCCESSFUL };
+      const existingPayment = {
+        id: 'payment-id',
+        status: PaymentStatus.SUCCESSFUL,
+      };
       mockQueryRunner.manager.findOne.mockResolvedValueOnce(existingPayment);
-      
+
       const result = await service.markPaymentSuccess('tran-id');
       expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
@@ -174,17 +227,29 @@ describe('PaymentApiService', () => {
 
     it('should throw and rollback if payment not found', async () => {
       mockQueryRunner.manager.findOne.mockResolvedValueOnce(null);
-      await expect(service.markPaymentSuccess('invalid-tran-id')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.markPaymentSuccess('invalid-tran-id'),
+      ).rejects.toThrow(NotFoundException);
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
     });
   });
 
   describe('markPaymentFailed', () => {
     it('should successfully mark payment as failed', async () => {
-      mockQueryRunner.manager.findOne.mockResolvedValueOnce({ id: 'payment-id', status: PaymentStatus.PENDING });
-      mockQueryRunner.manager.save.mockResolvedValueOnce({ id: 'payment-id', status: PaymentStatus.FAILED });
-      
-      const result = await service.markPaymentFailed('tran-id', null, 'failed notes');
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({
+        id: 'payment-id',
+        status: PaymentStatus.PENDING,
+      });
+      mockQueryRunner.manager.save.mockResolvedValueOnce({
+        id: 'payment-id',
+        status: PaymentStatus.FAILED,
+      });
+
+      const result = await service.markPaymentFailed(
+        'tran-id',
+        null,
+        'failed notes',
+      );
       expect(mockQueryRunner.manager.findOne).toHaveBeenCalled();
       expect(mockQueryRunner.manager.save).toHaveBeenCalled();
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
@@ -192,9 +257,12 @@ describe('PaymentApiService', () => {
     });
 
     it('should return early if payment already failed', async () => {
-      const existingPayment = { id: 'payment-id', status: PaymentStatus.FAILED };
+      const existingPayment = {
+        id: 'payment-id',
+        status: PaymentStatus.FAILED,
+      };
       mockQueryRunner.manager.findOne.mockResolvedValueOnce(existingPayment);
-      
+
       const result = await service.markPaymentFailed('tran-id');
       expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();

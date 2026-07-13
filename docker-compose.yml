@@ -3,7 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: dev
     container_name: mini_ecom_api
     ports:
       - "3000:3000"
@@ -25,7 +24,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-    command: pnpm run start:dev
+    command: sh -c "pnpm run migration:run && pnpm run seed && pnpm run start:dev"
     networks:
       - mini_ecom_network
 

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CreateUserDto } from '../user/dto/create-user.dto';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { CreateUserDto } from '../user/dto/create-user.dto';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -10,7 +10,9 @@ describe('AuthController', () => {
   const mockAuthService = {
     login: jest.fn().mockResolvedValue({ access_token: 'token123' }),
     register: jest.fn().mockResolvedValue(undefined),
-    profile: jest.fn().mockResolvedValue({ id: 'user-id', email: 'test@test.com' }),
+    profile: jest
+      .fn()
+      .mockResolvedValue({ id: 'user-id', email: 'test@test.com' }),
   };
 
   beforeEach(async () => {
@@ -38,7 +40,11 @@ describe('AuthController', () => {
 
   describe('register', () => {
     it('should register a new user', async () => {
-      const dto: CreateUserDto = { fullName: 'Test User', email: 'test@test.com', password: 'password123' };
+      const dto: CreateUserDto = {
+        fullName: 'Test User',
+        email: 'test@test.com',
+        password: 'password123',
+      };
       const result = await controller.register(dto);
       expect(service.register).toHaveBeenCalledWith(dto);
       expect(result).toEqual({ message: 'User registered successfully' });
@@ -47,8 +53,9 @@ describe('AuthController', () => {
 
   describe('profile', () => {
     it('should return user profile', async () => {
-      const req = { user: { sub: 'user-id' } };
-      const result = await controller.profile(req);
+      const user = { sub: 'user-id' };
+
+      const result = await controller.profile(user as any);
       expect(service.profile).toHaveBeenCalledWith('user-id');
       expect(result).toEqual({ id: 'user-id', email: 'test@test.com' });
     });

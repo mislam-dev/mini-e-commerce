@@ -10,9 +10,9 @@ WORKDIR /app
 # Copy package files
 COPY ./* ./
 
+ENV CI=true
 RUN pnpm install
-RUN pnpm run migration:run
-RUN pnpm run seed
+RUN mkdir logs
 
 EXPOSE 3000
 
