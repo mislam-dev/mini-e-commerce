@@ -6,7 +6,7 @@ import {
   User,
   UserRole,
   UserStatus,
-} from '../../core/user/entities/user.entity';
+} from '../../../core/user/entities/user.entity';
 
 @Injectable()
 export class UserSeedService {

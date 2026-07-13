@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Category } from '../../modules/category/entities/category.entity';
+import { Category } from '../../../modules/category/entities/category.entity';
 import {
   Product,
   ProductStatus,
-} from '../../modules/product/entities/product.entity';
+} from '../../../modules/product/entities/product.entity';
 
 @Injectable()
 export class ProductSeedService {
