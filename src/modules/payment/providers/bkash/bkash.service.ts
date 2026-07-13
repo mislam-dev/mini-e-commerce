@@ -1,9 +1,11 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
+import { type Cache } from 'cache-manager';
 import { BKASH_OPTIONS } from './bkash.constant';
 import type { BkashOptions } from './types/bkash.types';
 import {
@@ -18,11 +20,19 @@ import {
 
 @Injectable()
 export class BkashService {
+  private readonly cacheKeys = {
+    idToken: 'bkash:id_token',
+    refreshToken: 'bkash:refresh_token',
+  };
+
   private readonly logger = new Logger(BkashService.name);
   private idToken: string | null = null;
   private refreshToken: string | null = null;
 
-  constructor(@Inject(BKASH_OPTIONS) private readonly options: BkashOptions) {}
+  constructor(
+    @Inject(BKASH_OPTIONS) private readonly options: BkashOptions,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+  ) {}
 
   private async request<T>(
     endpoint: string,
@@ -76,13 +86,25 @@ export class BkashService {
       );
     }
 
-    const data = await response.json();
+    const rawText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (err) {
+      this.logger.error(
+        `Failed to parse bKash JSON response. Raw text: ${rawText}`,
+      );
+      throw new InternalServerErrorException(
+        'Invalid response format from bKash API',
+      );
+    }
 
     if (data.statusCode && data.statusCode !== '0000') {
       this.logger.error(`bKash API response error: ${JSON.stringify(data)}`);
       // If token expired within business logic
       if (data.statusCode === '2062' && !isAuthRequest) {
         this.logger.warn('Token invalid (2062), re-authenticating...');
+        await this.invalidCachedTokens();
         await this.grantToken();
         headers.Authorization = `Bearer ${this.idToken}`;
         const retryResponse = await fetch(url, {
@@ -102,18 +124,52 @@ export class BkashService {
     return data as T;
   }
 
+  private async invalidCachedTokens() {
+    await this.cacheManager.del(this.cacheKeys.idToken);
+    await this.cacheManager.del(this.cacheKeys.refreshToken);
+    this.idToken = null;
+    this.refreshToken = null;
+  }
+
   public async grantToken(): Promise<void> {
     this.logger.log('Authenticating with bKash...');
+
+    const idToken = await this.cacheManager.get<string>(this.cacheKeys.idToken);
+    const refreshToken = await this.cacheManager.get<string>(
+      this.cacheKeys.refreshToken,
+    );
+
+    if (idToken && refreshToken) {
+      this.idToken = idToken;
+      this.refreshToken = refreshToken;
+      this.logger.log('Using cached bKash credentials.');
+      return;
+    }
     const body = {
       app_key: this.options.appKey,
       app_secret: this.options.appSecret,
     };
+
+    console.log({ body });
 
     const data = await this.request<BkashGrantTokenResponse>(
       '/tokenized/checkout/token/grant',
       'POST',
       body,
       true,
+    );
+    console.log(data);
+    const expiresIn = data.expires_in * 1000;
+
+    await this.cacheManager.set(
+      this.cacheKeys.idToken,
+      data.id_token,
+      expiresIn,
+    );
+    await this.cacheManager.set(
+      this.cacheKeys.refreshToken,
+      data.refresh_token,
+      expiresIn,
     );
 
     this.idToken = data.id_token;
@@ -130,6 +186,8 @@ export class BkashService {
       mode: '0011',
       callbackURL: this.options.callbackUrl,
     };
+
+    console.log({ payload });
 
     return this.request<BkashCreatePaymentResponse>(
       '/tokenized/checkout/create',

@@ -6,6 +6,7 @@ import { PaymentFactory } from '../payment.factory';
 import { OrderService } from '../../orders/order/order.service';
 import { UserService } from '../../../core/user/user.service';
 import { NotFoundException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 
 describe('PaymentApiService', () => {
   let service: PaymentApiService;
@@ -31,11 +32,26 @@ describe('PaymentApiService', () => {
 
   const mockOrderService = {
     findOne: jest.fn().mockResolvedValue({ id: 'order-id', userId: 'user-id', totalAmount: 100 }),
-    updateStatus: jest.fn(),
   };
 
   const mockUserService = {
     findOne: jest.fn().mockResolvedValue({ id: 'user-id', fullName: 'Test User', email: 'test@test.com' }),
+  };
+
+  const mockQueryRunner = {
+    connect: jest.fn(),
+    startTransaction: jest.fn(),
+    commitTransaction: jest.fn(),
+    rollbackTransaction: jest.fn(),
+    release: jest.fn(),
+    manager: {
+      findOne: jest.fn(),
+      save: jest.fn(),
+    },
+  };
+
+  const mockDataSource = {
+    createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
   };
 
   beforeEach(async () => {
@@ -46,10 +62,18 @@ describe('PaymentApiService', () => {
         { provide: PaymentFactory, useValue: mockFactory },
         { provide: OrderService, useValue: mockOrderService },
         { provide: UserService, useValue: mockUserService },
+        { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
     service = module.get<PaymentApiService>(PaymentApiService);
+
+    // Reset queryRunner manager mocks
+    mockQueryRunner.manager.findOne.mockReset();
+    mockQueryRunner.manager.save.mockReset();
+    mockQueryRunner.commitTransaction.mockReset();
+    mockQueryRunner.rollbackTransaction.mockReset();
+    mockQueryRunner.release.mockReset();
   });
 
   describe('create', () => {
@@ -122,6 +146,59 @@ describe('PaymentApiService', () => {
       const result = await service.handleCallback('bkash', {} as any);
       expect(mockStrategy.handleCallback).toHaveBeenCalled();
       expect(result.url).toBe('http://redirect');
+    });
+  });
+
+  describe('markPaymentSuccess', () => {
+    it('should successfully mark payment as successful', async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({ id: 'payment-id', status: PaymentStatus.PENDING });
+      mockQueryRunner.manager.save.mockResolvedValueOnce({ id: 'payment-id', status: PaymentStatus.SUCCESSFUL });
+      
+      const result = await service.markPaymentSuccess('tran-id', { data: 'test' }, 'notes');
+      expect(mockQueryRunner.manager.findOne).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.save).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.release).toHaveBeenCalled();
+      expect(result.status).toBe(PaymentStatus.SUCCESSFUL);
+    });
+
+    it('should return early if payment already successful', async () => {
+      const existingPayment = { id: 'payment-id', status: PaymentStatus.SUCCESSFUL };
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce(existingPayment);
+      
+      const result = await service.markPaymentSuccess('tran-id');
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(result).toEqual(existingPayment);
+    });
+
+    it('should throw and rollback if payment not found', async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce(null);
+      await expect(service.markPaymentSuccess('invalid-tran-id')).rejects.toThrow(NotFoundException);
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+    });
+  });
+
+  describe('markPaymentFailed', () => {
+    it('should successfully mark payment as failed', async () => {
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce({ id: 'payment-id', status: PaymentStatus.PENDING });
+      mockQueryRunner.manager.save.mockResolvedValueOnce({ id: 'payment-id', status: PaymentStatus.FAILED });
+      
+      const result = await service.markPaymentFailed('tran-id', null, 'failed notes');
+      expect(mockQueryRunner.manager.findOne).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.save).toHaveBeenCalled();
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+      expect(result.status).toBe(PaymentStatus.FAILED);
+    });
+
+    it('should return early if payment already failed', async () => {
+      const existingPayment = { id: 'payment-id', status: PaymentStatus.FAILED };
+      mockQueryRunner.manager.findOne.mockResolvedValueOnce(existingPayment);
+      
+      const result = await service.markPaymentFailed('tran-id');
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(result).toEqual(existingPayment);
     });
   });
 });

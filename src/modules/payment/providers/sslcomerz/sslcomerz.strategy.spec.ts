@@ -68,37 +68,37 @@ describe('SslcomerzStrategy', () => {
   describe('handleCallback', () => {
     it('should handle VALID status', async () => {
       const mockPaymentService = {
-        findOneByTranId: jest.fn().mockResolvedValue({ id: 'payment-id' }),
-        update: jest.fn(),
+        markPaymentSuccess: jest.fn(),
       };
       const result = await strategy.handleCallback({ status: 'VALID', tran_id: '123' } as any, mockPaymentService as any);
-      expect(mockPaymentService.update).toHaveBeenCalled();
+      expect(mockPaymentService.markPaymentSuccess).toHaveBeenCalled();
       expect(result.url).toContain('http://success');
     });
 
     it('should handle FAILED status', async () => {
       const mockPaymentService = {
-        findOneByTranId: jest.fn().mockResolvedValue({ id: 'payment-id' }),
+        markPaymentFailed: jest.fn(),
       };
       const result = await strategy.handleCallback({ status: 'FAILED', tran_id: '123' } as any, mockPaymentService as any);
+      expect(mockPaymentService.markPaymentFailed).toHaveBeenCalled();
       expect(result.url).toContain('http://fail');
     });
 
     it('should handle CANCELLED status', async () => {
       const mockPaymentService = {
-        findOneByTranId: jest.fn().mockResolvedValue({ id: 'payment-id' }),
+        markPaymentFailed: jest.fn(),
       };
       const result = await strategy.handleCallback({ status: 'CANCELLED', tran_id: '123' } as any, mockPaymentService as any);
+      expect(mockPaymentService.markPaymentFailed).toHaveBeenCalled();
       expect(result.url).toContain('http://cancel');
     });
 
     it('should handle UNATTEMPTED status', async () => {
       const mockPaymentService = {
-        findOneByTranId: jest.fn().mockResolvedValue({ id: 'payment-id' }),
-        update: jest.fn(),
+        markPaymentFailed: jest.fn(),
       };
       const result = await strategy.handleCallback({ status: 'UNATTEMPTED', tran_id: '123' } as any, mockPaymentService as any);
-      expect(mockPaymentService.update).toHaveBeenCalled();
+      expect(mockPaymentService.markPaymentFailed).toHaveBeenCalled();
       expect(result.url).toContain('http://fail');
     });
 

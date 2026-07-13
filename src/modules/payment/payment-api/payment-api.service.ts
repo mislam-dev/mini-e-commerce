@@ -1,25 +1,30 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PaginationDto } from 'src/common/pagination/pagination.dto';
 import { UserService } from 'src/core/user/user.service';
+import {
+  Order,
+  OrderStatus,
+} from 'src/modules/orders/order/entities/order.entity';
 import { OrderService } from 'src/modules/orders/order/order.service';
-import { OrderStatus } from 'src/modules/orders/order/entities/order.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { PaymentFactory } from '../payment.factory';
-import { CreatePaymentApiDto } from './dto/create-payment-api.dto';
 import { BkashCallbackDto } from './dto/bkash-callback.dto';
+import { CreatePaymentApiDto } from './dto/create-payment-api.dto';
 import { SslcommerzCallbackDto } from './dto/sslcommerz-callback.dto';
 import { UpdatePaymentApiDto } from './dto/update-payment-api.dto';
 import { Payment, PaymentStatus } from './entities/payment-api.entity';
 
 @Injectable()
 export class PaymentApiService {
+  private readonly logger = new Logger(PaymentApiService.name);
   constructor(
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
     private readonly paymentFactory: PaymentFactory,
     private readonly orderService: OrderService,
     private readonly userService: UserService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(createPaymentApiDto: CreatePaymentApiDto) {
@@ -121,7 +126,108 @@ export class PaymentApiService {
     return strategy.handleCallback(body, this);
   }
 
-  async updateOrderStatus(orderId: string, status: OrderStatus) {
-    return this.orderService.updateStatus(orderId, status);
+  async markPaymentSuccess(
+    tranId: string,
+    rawResponse?: any,
+    notes?: string,
+  ): Promise<Payment> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const payment = await queryRunner.manager.findOne(Payment, {
+        where: { transactionId: tranId },
+      });
+
+      if (!payment) {
+        throw new NotFoundException(`Payment with ID "${tranId}" not found`);
+      }
+
+      // Idempotency check: if already processed, return immediately
+      if (
+        payment.status === PaymentStatus.SUCCESSFUL ||
+        payment.status === PaymentStatus.FAILED
+      ) {
+        await queryRunner.rollbackTransaction();
+        return payment;
+      }
+
+      payment.status = PaymentStatus.SUCCESSFUL;
+      if (rawResponse) payment.rawResponse = rawResponse;
+      if (rawResponse) payment.extra = JSON.stringify(rawResponse);
+      if (notes) payment.notes = notes;
+
+      const savedPayment = await queryRunner.manager.save(Payment, payment);
+      this.logger.log(`Payment success and saved. payment: ${savedPayment.id}`);
+
+      const order = await queryRunner.manager.findOne(Order, {
+        where: { id: payment.orderId },
+      });
+
+      if (!order) {
+        throw new NotFoundException(
+          `Order with ID "${payment.orderId}" not found`,
+        );
+      }
+
+      order.status = OrderStatus.PAID;
+      await queryRunner.manager.save(order);
+      this.logger.log(`Order updated successfully. order: ${order.id}`);
+
+      await queryRunner.commitTransaction();
+      return savedPayment;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error('Payment failed', error);
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async markPaymentFailed(
+    tranId: string,
+    rawResponse?: any,
+    notes?: string,
+  ): Promise<Payment> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const payment = await queryRunner.manager.findOne(Payment, {
+        where: { transactionId: tranId },
+      });
+
+      if (!payment) {
+        throw new NotFoundException(`Payment with ID "${tranId}" not found`);
+      }
+
+      // Idempotency check: if already processed, return immediately
+      if (
+        payment.status === PaymentStatus.SUCCESSFUL ||
+        payment.status === PaymentStatus.FAILED
+      ) {
+        await queryRunner.rollbackTransaction();
+        return payment;
+      }
+
+      payment.status = PaymentStatus.FAILED;
+      if (rawResponse) payment.rawResponse = rawResponse;
+      if (rawResponse) payment.extra = JSON.stringify(rawResponse);
+      if (notes) payment.notes = notes;
+
+      const savedPayment = await queryRunner.manager.save(Payment, payment);
+      this.logger.log(`Payment failed and saved: ${savedPayment.id}`);
+      await queryRunner.commitTransaction();
+      return savedPayment;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error('Payment failed', error);
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

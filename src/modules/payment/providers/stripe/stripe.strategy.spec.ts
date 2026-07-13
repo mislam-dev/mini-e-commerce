@@ -87,8 +87,7 @@ describe('StripePaymentStrategy', () => {
       });
 
       const mockPaymentService = {
-        findOneByTranId: jest.fn().mockResolvedValue({ id: 'payment-id', status: 'pending' }),
-        update: jest.fn(),
+        markPaymentSuccess: jest.fn().mockResolvedValue({ id: 'payment-id' }),
       };
 
       const result = await strategy.handleCallback(
@@ -97,8 +96,7 @@ describe('StripePaymentStrategy', () => {
       );
 
       expect(mockStripe.webhooks.constructEvent).toHaveBeenCalled();
-      expect(mockPaymentService.findOneByTranId).toHaveBeenCalledWith('session123');
-      expect(mockPaymentService.update).toHaveBeenCalled();
+      expect(mockPaymentService.markPaymentSuccess).toHaveBeenCalledWith('session123', { id: 'session123' }, expect.any(String));
       expect(result).toEqual({ url: '', tran_id: '' });
     });
 

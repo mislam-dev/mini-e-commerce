@@ -2,16 +2,14 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
-  NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { customAlphabet } from 'nanoid';
-import { OrderStatus } from '../../../orders/order/entities/order.entity';
 import {
   InitDataRequest,
   PaymentStrategy,
 } from '../../interfaces/payment-strategy/payment-strategy.interface';
-import { PaymentStatus } from '../../payment-api/entities/payment-api.entity';
 import { PaymentApiService } from '../../payment-api/payment-api.service';
 import { BkashService } from './bkash.service';
 
@@ -30,6 +28,13 @@ export class BkashStrategy implements PaymentStrategy {
   }
 
   async init(data: InitDataRequest): Promise<{ url: string; tran_id: string }> {
+    const bKashIsOpen = JSON.parse(
+      this.configService.get<string>('bkash.is_open') || 'true',
+    );
+    if (!bKashIsOpen) {
+      this.logger.error(`bKash payment is not available`);
+      throw new ServiceUnavailableException('bKash payment is not available');
+    }
     try {
       const tran_id = this.generateTranId();
 
@@ -43,7 +48,7 @@ export class BkashStrategy implements PaymentStrategy {
 
       return {
         url: paymentResponse.bkashURL,
-        tran_id: paymentResponse.paymentID, // For bKash, paymentID is the crucial tracking reference
+        tran_id: paymentResponse.paymentID,
       };
     } catch (error) {
       this.logger.error(`Failed to init bKash payment: ${error.message}`);
@@ -107,20 +112,15 @@ export class BkashStrategy implements PaymentStrategy {
     paymentID: string,
     paymentService: PaymentApiService,
   ): Promise<string> {
-    const payment = await paymentService.findOneByTranId(paymentID);
-    if (!payment) {
-      throw new NotFoundException(`Payment with ID "${paymentID}" not found`);
-    }
-
     try {
       // Execute the payment
       const executeResponse = await this.bkashService.executePayment(paymentID);
 
-      payment.status = PaymentStatus.SUCCESSFUL;
-      payment.rawResponse = executeResponse;
-      payment.extra = JSON.stringify(executeResponse);
-      payment.notes = 'Payment successful via bKash';
-      await paymentService.update(payment.id, payment);
+      await paymentService.markPaymentSuccess(
+        paymentID,
+        executeResponse,
+        'Payment successful via bKash',
+      );
 
       return (
         this.configService.get('paymentFrontend.successUrl') +
@@ -128,17 +128,12 @@ export class BkashStrategy implements PaymentStrategy {
       );
     } catch (error) {
       this.logger.error(`Failed to execute bKash payment: ${error.message}`);
-      // If execute fails, it's generally a failure
-      payment.status = PaymentStatus.FAILED;
-      payment.notes = `Execution failed: ${error.message}`;
-      await paymentService.update(payment.id, payment);
 
-      try {
-        await paymentService.updateOrderStatus(
-          payment.orderId,
-          OrderStatus.CANCELLED,
-        );
-      } catch (e) {}
+      await paymentService.markPaymentFailed(
+        paymentID,
+        null,
+        `Execution failed: ${error.message}`,
+      );
 
       return (
         this.configService.get('paymentFrontend.failUrl') +
@@ -151,21 +146,11 @@ export class BkashStrategy implements PaymentStrategy {
     paymentID: string,
     paymentService: PaymentApiService,
   ): Promise<string> {
-    const payment = await paymentService.findOneByTranId(paymentID);
-    if (!payment) {
-      throw new NotFoundException(`Payment with ID "${paymentID}" not found`);
-    }
-
-    payment.status = PaymentStatus.FAILED;
-    payment.notes = 'Payment failed via bKash';
-    await paymentService.update(payment.id, payment);
-
-    try {
-      await paymentService.updateOrderStatus(
-        payment.orderId,
-        OrderStatus.CANCELLED,
-      );
-    } catch (e) {}
+    await paymentService.markPaymentFailed(
+      paymentID,
+      null,
+      'Payment failed via bKash',
+    );
 
     return (
       this.configService.get('paymentFrontend.failUrl') +
@@ -177,22 +162,11 @@ export class BkashStrategy implements PaymentStrategy {
     paymentID: string,
     paymentService: PaymentApiService,
   ): Promise<string> {
-    const payment = await paymentService.findOneByTranId(paymentID);
-    if (!payment) {
-      throw new NotFoundException(`Payment with ID "${paymentID}" not found`);
-    }
-
-    // payment cancel
-    payment.status = PaymentStatus.FAILED;
-    payment.notes = 'Payment cancelled via bKash';
-    await paymentService.update(payment.id, payment);
-
-    try {
-      await paymentService.updateOrderStatus(
-        payment.orderId,
-        OrderStatus.CANCELLED,
-      );
-    } catch (e) {}
+    await paymentService.markPaymentFailed(
+      paymentID,
+      null,
+      'Payment cancelled via bKash',
+    );
 
     return (
       this.configService.get('paymentFrontend.cancelUrl') +

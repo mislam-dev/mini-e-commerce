@@ -11,4 +11,5 @@ export const bkashConfig = registerAs('bkash', () => ({
   app_secret: process.env.BKASH_APP_SECRET,
   callback_url: process.env.BKASH_CALLBACK_URL,
   refund_callback_url: process.env.BKASH_REFUND_CALLBACK_URL,
+  is_open: process.env.BKASH_IS_OPEN || true,
 }));

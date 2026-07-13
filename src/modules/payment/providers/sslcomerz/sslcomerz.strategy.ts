@@ -93,16 +93,7 @@ export class SslcomerzStrategy implements PaymentStrategy {
     body: SslcommerzCallbackDto,
     paymentService: PaymentApiService,
   ) {
-    const payment = await paymentService.findOneByTranId(body.tran_id);
-    if (!payment) {
-      throw new NotFoundException(
-        `Payment with ID "${body.tran_id}" not found`,
-      );
-    }
-    payment.status = PaymentStatus.SUCCESSFUL;
-    payment.extra = JSON.stringify(body);
-    payment.notes = 'Payment successful';
-    await paymentService.update(payment.id, payment);
+    await paymentService.markPaymentSuccess(body.tran_id, body, 'Payment successful');
     return (
       this.configService.get('paymentFrontend.successUrl') +
       `?tran_id=${body.tran_id}&status=${body.status}`
@@ -113,15 +104,7 @@ export class SslcomerzStrategy implements PaymentStrategy {
     body: SslcommerzCallbackDto,
     paymentService: PaymentApiService,
   ) {
-    const payment = await paymentService.findOneByTranId(body.tran_id);
-    if (!payment) {
-      throw new NotFoundException(
-        `Payment with ID "${body.tran_id}" not found`,
-      );
-    }
-    payment.status = PaymentStatus.FAILED;
-    payment.extra = JSON.stringify(body);
-    payment.notes = 'Payment failed';
+    await paymentService.markPaymentFailed(body.tran_id, body, 'Payment failed');
     return (
       this.configService.get('paymentFrontend.failUrl') +
       `?tran_id=${body.tran_id}&status=${body.status}`
@@ -132,15 +115,7 @@ export class SslcomerzStrategy implements PaymentStrategy {
     body: SslcommerzCallbackDto,
     paymentService: PaymentApiService,
   ) {
-    const payment = await paymentService.findOneByTranId(body.tran_id);
-    if (!payment) {
-      throw new NotFoundException(
-        `Payment with ID "${body.tran_id}" not found`,
-      );
-    }
-    payment.status = PaymentStatus.FAILED;
-    payment.extra = JSON.stringify(body);
-    payment.notes = 'Payment cancelled';
+    await paymentService.markPaymentFailed(body.tran_id, body, 'Payment cancelled');
     return (
       this.configService.get('paymentFrontend.cancelUrl') +
       `?tran_id=${body.tran_id}&status=${body.status}`
@@ -151,16 +126,7 @@ export class SslcomerzStrategy implements PaymentStrategy {
     body: SslcommerzCallbackDto,
     paymentService: PaymentApiService,
   ) {
-    const payment = await paymentService.findOneByTranId(body.tran_id);
-    if (!payment) {
-      throw new NotFoundException(
-        `Payment with ID "${body.tran_id}" not found`,
-      );
-    }
-    payment.status = PaymentStatus.FAILED;
-    payment.extra = JSON.stringify(body);
-    payment.notes = 'Payment unattempted';
-    await paymentService.update(payment.id, payment);
+    await paymentService.markPaymentFailed(body.tran_id, body, 'Payment unattempted');
     return (
       this.configService.get('paymentFrontend.failUrl') +
       `?tran_id=${body.tran_id}&status=${body.status}`
