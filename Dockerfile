@@ -12,6 +12,7 @@ COPY ./* ./
 
 RUN pnpm install
 RUN pnpm run migration:run
+RUN pnpm run seed
 
 EXPOSE 3000
 

@@ -1,9 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ProductService } from './product.service';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Product, ProductStatus } from './entities/product.entity';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { CreateProductDto } from './dto/create-product.dto';
+import { Product, ProductStatus } from './entities/product.entity';
+import { ProductService } from './product.service';
 
 describe('ProductService', () => {
   let service: ProductService;
@@ -17,6 +18,10 @@ describe('ProductService', () => {
     price: 100,
     stockQuantity: 10,
     status: ProductStatus.ACTIVE,
+    category: {
+      id: 'category-id',
+      name: 'Category',
+    },
   };
 
   const mockRepository = {
@@ -49,9 +54,20 @@ describe('ProductService', () => {
 
   describe('create', () => {
     it('should create a product and clear cache', async () => {
-      const dto = { name: 'Test Product', sku: 'TEST-SKU', description: 'desc', price: 100, stockQuantity: 10, status: ProductStatus.ACTIVE };
+      const dto: CreateProductDto = {
+        name: 'Test Product',
+        sku: 'TEST-SKU',
+        description: 'desc',
+        price: 100,
+        stockQuantity: 10,
+        status: ProductStatus.ACTIVE,
+        categoryId: 'category-id',
+      };
       const result = await service.create(dto);
-      expect(mockRepository.create).toHaveBeenCalledWith(dto);
+      expect(mockRepository.create).toHaveBeenCalledWith({
+        ...dto,
+        categoryId: 'category-id',
+      });
       expect(mockCacheManager.del).toHaveBeenCalledWith('products');
       expect(mockRepository.save).toHaveBeenCalledWith(mockProduct);
       expect(result).toEqual(mockProduct);
@@ -60,7 +76,12 @@ describe('ProductService', () => {
 
   describe('findAll', () => {
     it('should return from cache if available', async () => {
-      const cachedData = { results: [mockProduct], total: 1, limit: 10, offset: 0 };
+      const cachedData = {
+        results: [mockProduct],
+        total: 1,
+        limit: 10,
+        offset: 0,
+      };
       mockCacheManager.get.mockResolvedValue(cachedData);
       const result = await service.findAll({ limit: 10, offset: 0 });
       expect(result).toEqual(cachedData);
@@ -70,8 +91,15 @@ describe('ProductService', () => {
     it('should query db and set cache if not in cache', async () => {
       mockCacheManager.get.mockResolvedValue(null);
       const result = await service.findAll({ limit: 10, offset: 0 });
-      expect(mockRepository.findAndCount).toHaveBeenCalledWith({ skip: 0, take: 10 });
-      expect(mockCacheManager.set).toHaveBeenCalledWith('products', { results: [mockProduct], total: 1, limit: 10, offset: 0 }, 60 * 60 * 1000);
+      expect(mockRepository.findAndCount).toHaveBeenCalledWith({
+        skip: 0,
+        take: 10,
+      });
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        'products',
+        { results: [mockProduct], total: 1, limit: 10, offset: 0 },
+        60 * 60 * 1000,
+      );
       expect(result.total).toBe(1);
     });
   });
@@ -88,22 +116,35 @@ describe('ProductService', () => {
       mockCacheManager.get.mockResolvedValue(null);
       mockRepository.findOneBy.mockResolvedValue(mockProduct);
       const result = await service.findOne('product-id');
-      expect(mockRepository.findOneBy).toHaveBeenCalledWith({ id: 'product-id' });
-      expect(mockCacheManager.set).toHaveBeenCalledWith('products:product-id', mockProduct, 60 * 60 * 1000);
+      expect(mockRepository.findOneBy).toHaveBeenCalledWith({
+        id: 'product-id',
+      });
+      expect(mockCacheManager.set).toHaveBeenCalledWith(
+        'products:product-id',
+        mockProduct,
+        60 * 60 * 1000,
+      );
       expect(result).toEqual(mockProduct);
     });
 
     it('should throw exception if not found', async () => {
       mockCacheManager.get.mockResolvedValue(null);
       mockRepository.findOneBy.mockResolvedValue(null);
-      await expect(service.findOne('product-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('product-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('update', () => {
     it('should update a product and invalidate caches', async () => {
-      jest.spyOn(service, 'findOne').mockResolvedValue({ ...mockProduct } as any);
-      mockRepository.save.mockResolvedValue({ ...mockProduct, name: 'Updated' });
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ ...mockProduct } as any);
+      mockRepository.save.mockResolvedValue({
+        ...mockProduct,
+        name: 'Updated',
+      });
 
       const result = await service.update('product-id', { name: 'Updated' });
       expect(mockRepository.save).toHaveBeenCalled();
@@ -123,14 +164,21 @@ describe('ProductService', () => {
 
     it('should throw exception if delete fails', async () => {
       mockRepository.delete.mockResolvedValue({ affected: 0 });
-      await expect(service.remove('product-id')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('product-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('updateStock', () => {
     it('should update stock and invalidate caches', async () => {
-      jest.spyOn(service, 'findOne').mockResolvedValue({ ...mockProduct } as any);
-      mockRepository.save.mockResolvedValue({ ...mockProduct, stockQuantity: 20 });
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ ...mockProduct } as any);
+      mockRepository.save.mockResolvedValue({
+        ...mockProduct,
+        stockQuantity: 20,
+      });
 
       const result = await service.updateStock('product-id', { quantity: 20 });
       expect(mockRepository.save).toHaveBeenCalled();

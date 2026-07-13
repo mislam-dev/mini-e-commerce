@@ -7,8 +7,8 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { Category } from './entities/category.entity';
 
-const CACHE_KEY = 'CATEGORY_TREE';
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+export const CACHE_KEY = 'category:tree';
+export const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 @Injectable()
 export class CategoryService {
@@ -26,12 +26,12 @@ export class CategoryService {
 
   async findAll() {
     const cachedCategories = await this.cacheManager.get<any[]>(CACHE_KEY);
-
     if (cachedCategories) {
       return cachedCategories;
     }
 
     const categories = await this.categoryRepository.find();
+
     const tree = this.buildTree(categories);
     await this.cacheManager.set(CACHE_KEY, tree, CACHE_TTL);
 
@@ -43,7 +43,9 @@ export class CategoryService {
     parentId: string | null = null,
   ): any[] {
     return categories
-      .filter((category) => category.parentId === parentId)
+      .filter((category) => {
+        return category.parentId === parentId;
+      })
       .map((category) => ({
         ...category,
         children: this.buildTree(categories, category.id),

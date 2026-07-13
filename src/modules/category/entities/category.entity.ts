@@ -18,14 +18,14 @@ export class Category {
   // slug: string;
 
   @Column({ name: 'parent_id', nullable: true })
-  parentId: string;
+  parentId?: string;
 
   @ManyToOne(() => Category, (c) => c.children, {
     nullable: true,
     onDelete: 'CASCADE',
   })
-  parent: Category;
+  parent?: Category;
 
   @OneToMany(() => Category, (c) => c.parent)
-  children: Category[];
+  children?: Category[];
 }

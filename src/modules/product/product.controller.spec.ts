@@ -1,13 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CreateProductDto } from './dto/create-product.dto';
+import { ProductStatus } from './entities/product.entity';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
-import { ProductStatus } from './entities/product.entity';
 
 describe('ProductController', () => {
   let controller: ProductController;
   let service: ProductService;
 
-  const mockProduct = { id: 'product-id', name: 'Test Product', sku: 'TEST-SKU' };
+  const mockProduct = {
+    id: 'product-id',
+    name: 'Test Product',
+    sku: 'TEST-SKU',
+    description: 'desc',
+    price: 100,
+    stockQuantity: 10,
+    status: ProductStatus.ACTIVE,
+    category: {
+      id: 'category-id',
+      name: 'category-name',
+    },
+  };
 
   const mockProductService = {
     create: jest.fn().mockResolvedValue(mockProduct),
@@ -15,7 +28,9 @@ describe('ProductController', () => {
     findOne: jest.fn().mockResolvedValue(mockProduct),
     update: jest.fn().mockResolvedValue({ ...mockProduct, name: 'Updated' }),
     remove: jest.fn().mockResolvedValue(undefined),
-    updateStock: jest.fn().mockResolvedValue({ ...mockProduct, stockQuantity: 50 }),
+    updateStock: jest
+      .fn()
+      .mockResolvedValue({ ...mockProduct, stockQuantity: 50 }),
   };
 
   beforeEach(async () => {
@@ -35,7 +50,15 @@ describe('ProductController', () => {
 
   describe('create', () => {
     it('should create a product', async () => {
-      const dto = { name: 'Test', sku: 'TEST', description: 'desc', price: 100, stockQuantity: 10, status: ProductStatus.ACTIVE };
+      const dto: CreateProductDto = {
+        name: 'Test',
+        sku: 'TEST',
+        description: 'desc',
+        price: 100,
+        stockQuantity: 10,
+        status: ProductStatus.ACTIVE,
+        categoryId: 'category-id',
+      };
       const result = await controller.create(dto);
       expect(service.create).toHaveBeenCalledWith(dto);
       expect(result).toEqual(mockProduct);
@@ -76,8 +99,12 @@ describe('ProductController', () => {
 
   describe('updateStock', () => {
     it('should update stock of a product', async () => {
-      const result = await controller.updateStock('product-id', { quantity: 50 });
-      expect(service.updateStock).toHaveBeenCalledWith('product-id', { quantity: 50 });
+      const result = await controller.updateStock('product-id', {
+        quantity: 50,
+      });
+      expect(service.updateStock).toHaveBeenCalledWith('product-id', {
+        quantity: 50,
+      });
       expect(result.stockQuantity).toBe(50);
     });
   });

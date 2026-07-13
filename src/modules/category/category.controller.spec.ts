@@ -44,7 +44,7 @@ describe('CategoryController', () => {
     it('should return all categories', async () => {
       const mockResult = [{ id: '1', name: 'Test' }];
       jest.spyOn(service, 'findAll').mockResolvedValue(mockResult as any);
-      expect(await controller.findAll()).toEqual(mockResult);
+      expect(await controller.findAll()).toEqual({ results: mockResult });
     });
   });
 
@@ -68,7 +68,9 @@ describe('CategoryController', () => {
   describe('remove', () => {
     it('should remove a category', async () => {
       jest.spyOn(service, 'remove').mockResolvedValue(undefined);
-      expect(await controller.remove('1')).toBeUndefined();
+      expect(await controller.remove('1')).toEqual({
+        message: 'Category deleted successfully',
+      });
     });
   });
 });

@@ -19,6 +19,28 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RegisterDTO'
+            examples:
+              validRegistration:
+                summary: Valid Registration
+                description: Register a new valid user
+                value:
+                  email: 'newuser@example.com'
+                  fullName: 'New User'
+                  password: 'password123'
+              dummyEmail:
+                summary: Dummy Email
+                description: Registration fails if email is a dummy/test email
+                value:
+                  email: 'test@test.com'
+                  fullName: 'Test User'
+                  password: 'password123'
+              shortPassword:
+                summary: Short Password
+                description: Registration fails if password is too short
+                value:
+                  email: 'newuser2@example.com'
+                  fullName: 'New User 2'
+                  password: '123'
       responses:
         '201':
           description: User registered successfully
@@ -39,6 +61,25 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginDTO'
+            examples:
+              validUser:
+                summary: Valid User
+                description: Login with a valid user credentials
+                value:
+                  email: 'user1@example.com'
+                  password: 'user123'
+              adminUser:
+                summary: Admin User
+                description: Login with admin credentials
+                value:
+                  email: 'admin@example.com'
+                  password: 'admin123'
+              invalidCredentials:
+                summary: Invalid Credentials
+                description: Login with wrong password
+                value:
+                  email: 'john.doe@example.com'
+                  password: 'wrong_password'
       responses:
         '200':
           description: Login successful
@@ -64,6 +105,100 @@ paths:
                 $ref: '#/components/schemas/User'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  # Categories
+  /category:
+    get:
+      summary: Get category tree
+      tags: [Category]
+      responses:
+        '200':
+          description: Category tree retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryTree'
+    post:
+      summary: Create a new category
+      tags: [Category]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryDto'
+      responses:
+        '201':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+  /category/{id}:
+    get:
+      summary: Get a single category
+      tags: [Category]
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Category ID
+      responses:
+        '200':
+          description: Category retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+    patch:
+      summary: Update a category
+      tags: [Category]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Category ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryDto'
+      responses:
+        '200':
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+    delete:
+      summary: Delete a category
+      tags: [Category]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Category ID
+      responses:
+        '200':
+          description: Category deleted successfully
 
   # Products
   /product:
@@ -131,7 +266,7 @@ paths:
                 $ref: '#/components/schemas/Product'
         '404':
           $ref: '#/components/responses/NotFound'
-    put:
+    patch:
       summary: Update product (Admin only)
       tags: [Product]
       security:
@@ -608,98 +743,6 @@ paths:
       responses:
         '200':
           description: Webhook received
-  /category:
-    get:
-      summary: Get category tree
-      tags: [Category]
-      responses:
-        '200':
-          description: Category tree retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/CategoryTree'
-    post:
-      summary: Create a new category
-      tags: [Category]
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateCategoryDto'
-      responses:
-        '201':
-          description: Category created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Category'
-  /category/{id}:
-    get:
-      summary: Get a single category
-      tags: [Category]
-      parameters:
-        - in: path
-          name: id
-          schema:
-            type: string
-            format: uuid
-          required: true
-          description: Category ID
-      responses:
-        '200':
-          description: Category retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Category'
-    patch:
-      summary: Update a category
-      tags: [Category]
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          schema:
-            type: string
-            format: uuid
-          required: true
-          description: Category ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateCategoryDto'
-      responses:
-        '200':
-          description: Category updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Category'
-    delete:
-      summary: Delete a category
-      tags: [Category]
-      security:
-        - bearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          schema:
-            type: string
-            format: uuid
-          required: true
-          description: Category ID
-      responses:
-        '200':
-          description: Category deleted successfully
 
 components:
   securitySchemes:
@@ -831,8 +874,10 @@ components:
         email:
           type: string
           format: email
+          example: admin@example.com
         password:
           type: string
+          example: admin123
 
     AuthResponse:
       type: object
