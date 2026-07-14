@@ -8,7 +8,6 @@ export class LocalAuthGuard extends AuthGuard('local') {
       throw new UnauthorizedException(
         'Your provided credentials are incorrect!',
       );
-    console.log(user);
     return user;
   }
 }

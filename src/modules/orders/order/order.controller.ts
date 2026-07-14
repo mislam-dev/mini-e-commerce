@@ -41,6 +41,8 @@ export class OrderController {
     return this.orderService.findAll(pagination);
   }
 
+  // note: this two route can be combined into single route. I intentionally did this for simplicity
+
   @Get('my')
   @SetRoles(UserRole.CUSTOMER)
   findMyOrders(
@@ -55,7 +57,7 @@ export class OrderController {
   async findOne(@Param('id') id: string, @CurrentUser() user: UserPayload) {
     const order = await this.orderService.findOne(id);
 
-    // assuming admin can access any, Customer only their own
+    // assuming admin can access any, Customer can only access their own
     if (order.user && order.user.id !== user.sub) {
       if (
         (user['role'] as UserRole) !== UserRole.ADMIN &&

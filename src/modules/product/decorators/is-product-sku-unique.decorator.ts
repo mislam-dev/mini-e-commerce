@@ -1,14 +1,14 @@
 import { registerDecorator, ValidationOptions } from 'class-validator';
-import { IsProductCodeUniqueConstraint } from '../validators/is-product-code-unique.constraint';
+import { IsProductSkuUniqueConstraint } from '../validators/is-product-sku-unique.constraint';
 
-export function IsProductCodeUnique(validationOptions?: ValidationOptions) {
+export function IsProductSkuUnique(validationOptions?: ValidationOptions) {
   return function (object: Object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
       options: validationOptions,
       constraints: [],
-      validator: IsProductCodeUniqueConstraint,
+      validator: IsProductSkuUniqueConstraint,
     });
   };
 }

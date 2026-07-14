@@ -20,6 +20,7 @@ import { PaginationDto } from 'src/common/pagination/pagination.dto';
 import { Public } from 'src/core/auth/decorators/public.decorator';
 import { SetRoles } from 'src/core/auth/decorators/set-roles.decorator';
 import { UserRole } from 'src/core/user/entities/user.entity';
+import { BkashCallbackDto } from './dto/bkash-callback.dto';
 import { CreatePaymentApiDto } from './dto/create-payment-api.dto';
 import { SslcommerzCallbackDto } from './dto/sslcommerz-callback.dto';
 import { UpdatePaymentApiDto } from './dto/update-payment-api.dto';
@@ -102,5 +103,25 @@ export class PaymentApiController {
       signature,
     });
     return { received: true };
+  }
+
+  @Public()
+  @Get('callback/bkash/webhook')
+  async bkashCallbackGet(
+    @Query() query: BkashCallbackDto,
+    @Res() res: Response,
+  ) {
+    const { url } = await this.paymentApiService.handleCallback('bkash', query);
+    res.redirect(url);
+  }
+
+  @Public()
+  @Post('callback/bkash/webhook')
+  async bkashCallbackPost(
+    @Body() body: BkashCallbackDto,
+    @Res() res: Response,
+  ) {
+    const { url } = await this.paymentApiService.handleCallback('bkash', body);
+    res.redirect(url);
   }
 }

@@ -5,12 +5,13 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  Request,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { CreateUserDto } from '../user/dto/create-user.dto';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
+import { User, type UserPayload } from './decorators/user.decorator';
 import { JwtGuard } from './guards/jwt.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 
@@ -22,7 +23,7 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @HttpCode(HttpStatus.OK)
   @Post('/login')
-  login(@Request() req) {
+  login(@Req() req) {
     return this.authService.login(req.user);
   }
 
@@ -36,7 +37,7 @@ export class AuthController {
 
   @UseGuards(JwtGuard)
   @Get('/profile')
-  profile(@Request() req) {
-    return this.authService.profile(req.user.sub);
+  profile(@User() user: UserPayload) {
+    return this.authService.profile(user.sub);
   }
 }

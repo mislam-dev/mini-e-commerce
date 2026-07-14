@@ -7,10 +7,14 @@ import {
 import { NestFactory } from '@nestjs/core';
 import { useContainer } from 'class-validator';
 import { AppModule } from './app.module';
+import { logger, LoggingInterceptor } from './core/logger';
 import { setupSwagger } from './core/swagger/swagger.config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+    logger: logger,
+  });
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: '1',
@@ -38,6 +42,9 @@ async function bootstrap() {
   setupSwagger(app);
 
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
+
+  app.useGlobalInterceptors(new LoggingInterceptor());
+
   await app.listen(process.env.PORT ?? 3000);
 }
 void bootstrap();

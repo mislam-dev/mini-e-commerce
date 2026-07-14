@@ -9,7 +9,6 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  Put,
   Query,
 } from '@nestjs/common';
 import { PaginationDto } from 'src/common/pagination/pagination.dto';
@@ -44,7 +43,7 @@ export class ProductController {
     return this.productService.findOne(id);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @SetRoles(UserRole.ADMIN)
   @HttpCode(HttpStatus.ACCEPTED)
   update(

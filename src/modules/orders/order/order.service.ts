@@ -9,8 +9,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Cache } from 'cache-manager';
-import { UserService } from 'src/core/user/user.service';
-import { CartService } from 'src/modules/cart/cart.service';
 import { DataSource, Repository } from 'typeorm';
 import { PaginationDto } from '../../../common/pagination/pagination.dto';
 import { UserPayload } from '../../../core/auth/decorators/user.decorator';
@@ -19,6 +17,8 @@ import {
   UserRole,
   UserStatus,
 } from '../../../core/user/entities/user.entity';
+import { UserService } from '../../../core/user/user.service';
+import { CartService } from '../../cart/cart.service';
 import { Cart } from '../../cart/entities/cart.entity';
 import { Product } from '../../product/entities/product.entity';
 import { OrderItem } from '../order-item/entities/order-item.entity';
@@ -43,9 +43,11 @@ export class OrderService {
 
   async create(userId: string, createOrderDto: CreateOrderDto) {
     const findUser = await this.userService.findOne(userId);
+
     if (findUser.status === UserStatus.ORDER_RESTRICTED) {
       throw new BadRequestException('You are restricted to place new orders!');
     }
+
     const cancelCount = await this.getCancelOrderCount(userId);
     const cancelCountLimit =
       this.configService.get<number>('order.cancel-count-limit') || 5;
@@ -114,24 +116,51 @@ export class OrderService {
   async findAll(pagination: PaginationDto) {
     const { limit = 10, offset = 0 } = pagination;
     const [results, total] = await this.orderRepository.findAndCount({
-      relations: ['items', 'items.product'],
+      relations: ['items'],
       take: limit,
       skip: offset,
       order: { createdAt: 'DESC' },
+      select: {
+        id: true,
+        status: true,
+        userId: true,
+        createdAt: true,
+        totalAmount: true,
+        items: {
+          id: true,
+          quantity: true,
+          priceAtPurchase: true,
+          productId: true,
+        },
+      },
     });
-    return { results, total, limit, offset };
+
+    return { total, limit, offset, results };
   }
 
   async findMyOrders(user: User, pagination: PaginationDto) {
     const { limit = 10, offset = 0 } = pagination;
     const [results, total] = await this.orderRepository.findAndCount({
       where: { userId: user.id },
-      relations: ['items', 'items.product'],
+      relations: ['items'],
       take: limit,
       skip: offset,
       order: { createdAt: 'DESC' },
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        totalAmount: true,
+        items: {
+          id: true,
+          quantity: true,
+          priceAtPurchase: true,
+          productId: true,
+        },
+      },
     });
-    return { results, total, limit, offset };
+
+    return { total, limit, offset, results };
   }
 
   async findOne(id: string) {

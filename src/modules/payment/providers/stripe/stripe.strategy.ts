@@ -3,7 +3,6 @@ import {
   Inject,
   Injectable,
   Logger,
-  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
@@ -11,7 +10,6 @@ import {
   InitDataRequest,
   PaymentStrategy,
 } from '../../interfaces/payment-strategy/payment-strategy.interface'; // Assuming interface location
-import { PaymentStatus } from '../../payment-api/entities/payment-api.entity';
 import { PaymentApiService } from '../../payment-api/payment-api.service';
 import { STRIPE_INSTANCE } from './stripe.constant'; // Your constant file
 
@@ -147,8 +145,8 @@ export class StripePaymentStrategy implements PaymentStrategy {
         break;
 
       default:
-      // Handle other event types or ignore them
-      // console.log(`Unhandled event type ${event.type}`);
+        this.logger.log(`Unhandled event type ${event.type}`);
+        break;
     }
 
     // 3. Return 200 OK to Stripe immediately
@@ -164,28 +162,24 @@ export class StripePaymentStrategy implements PaymentStrategy {
     paymentService: PaymentApiService,
   ) {
     this.logger.log(`💰 Payment succeeded for Session: ${session.id}`);
-
     const transId = session.id;
-    const payment = await paymentService.findOneByTranId(transId);
-    if (!payment) {
-      throw new NotFoundException(`Payment with ID "${transId}" not found`);
-    }
-    payment.status = PaymentStatus.SUCCESSFUL;
-    await paymentService.update(payment.id, payment);
+    await paymentService.markPaymentSuccess(
+      transId,
+      session,
+      'Payment successful via Stripe',
+    );
   }
+
   private async handleCheckoutSessionFailed(
     intent: Stripe.PaymentIntent,
     paymentService: PaymentApiService,
   ) {
     this.logger.log(`💰 Payment failed for Session: ${intent.id}`);
-
     const transId = intent.id;
-    console.log({ transId, intent });
-    // const payment = await paymentService.findOneByTranId(transId);
-    // if (!payment) {
-    //   throw new NotFoundException(`Payment with ID "${transId}" not found`);
-    // }
-    // payment.status = PaymentStatus.FAILED;
-    // await paymentService.update(payment.id, payment);
+    await paymentService.markPaymentFailed(
+      transId,
+      intent,
+      'Payment failed via Stripe',
+    );
   }
 }

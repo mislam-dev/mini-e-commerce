@@ -19,6 +19,28 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RegisterDTO'
+            examples:
+              validRegistration:
+                summary: Valid Registration
+                description: Register a new valid user
+                value:
+                  email: 'newuser@example.com'
+                  fullName: 'New User'
+                  password: 'password123'
+              dummyEmail:
+                summary: Dummy Email
+                description: Registration fails if email is a dummy/test email
+                value:
+                  email: 'test@test.com'
+                  fullName: 'Test User'
+                  password: 'password123'
+              shortPassword:
+                summary: Short Password
+                description: Registration fails if password is too short
+                value:
+                  email: 'newuser2@example.com'
+                  fullName: 'New User 2'
+                  password: '123'
       responses:
         '201':
           description: User registered successfully
@@ -39,6 +61,25 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginDTO'
+            examples:
+              validUser:
+                summary: Valid User
+                description: Login with a valid user credentials
+                value:
+                  email: 'user1@example.com'
+                  password: 'user123'
+              adminUser:
+                summary: Admin User
+                description: Login with admin credentials
+                value:
+                  email: 'admin@example.com'
+                  password: 'admin123'
+              invalidCredentials:
+                summary: Invalid Credentials
+                description: Login with wrong password
+                value:
+                  email: 'john.doe@example.com'
+                  password: 'wrong_password'
       responses:
         '200':
           description: Login successful
@@ -64,6 +105,100 @@ paths:
                 $ref: '#/components/schemas/User'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  # Categories
+  /category:
+    get:
+      summary: Get category tree
+      tags: [Category]
+      responses:
+        '200':
+          description: Category tree retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryTree'
+    post:
+      summary: Create a new category
+      tags: [Category]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryDto'
+      responses:
+        '201':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+  /category/{id}:
+    get:
+      summary: Get a single category
+      tags: [Category]
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Category ID
+      responses:
+        '200':
+          description: Category retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+    patch:
+      summary: Update a category
+      tags: [Category]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Category ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryDto'
+      responses:
+        '200':
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+    delete:
+      summary: Delete a category
+      tags: [Category]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Category ID
+      responses:
+        '200':
+          description: Category deleted successfully
 
   # Products
   /product:
@@ -131,7 +266,7 @@ paths:
                 $ref: '#/components/schemas/Product'
         '404':
           $ref: '#/components/responses/NotFound'
-    put:
+    patch:
       summary: Update product (Admin only)
       tags: [Product]
       security:
@@ -236,7 +371,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/CartItem'
+                  $ref: '#/components/schemas/CartItemResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:
@@ -256,7 +391,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CartItem'
+                $ref: '#/components/schemas/CartAddResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -505,6 +640,109 @@ paths:
           description: Payment validated successfully
         '400':
           $ref: '#/components/responses/BadRequest'
+  /payment:
+    get:
+      summary: Get list of payments
+      tags: [Payment]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of payments
+  /payment/{id}:
+    patch:
+      summary: Update payment details
+      tags: [Payment]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Payment ID
+      responses:
+        '200':
+          description: Payment updated successfully
+    delete:
+      summary: Delete a payment
+      tags: [Payment]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Payment ID
+      responses:
+        '200':
+          description: Payment deleted successfully
+  /payment/callback/sslcommerz/success:
+    post:
+      summary: SSLCommerz Success Webhook
+      tags: [Payment Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SslcommerzCallbackDto'
+      responses:
+        '200':
+          description: Payment successful
+  /payment/callback/sslcommerz/failure:
+    post:
+      summary: SSLCommerz Failure Webhook
+      tags: [Payment Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SslcommerzCallbackDto'
+      responses:
+        '200':
+          description: Payment failed
+  /payment/callback/stripe/webhook:
+    post:
+      summary: Stripe Webhook
+      tags: [Payment Webhooks]
+      responses:
+        '200':
+          description: Webhook received
+  /payment/callback/bkash/webhook:
+    get:
+      summary: bKash Callback Webhook (GET)
+      tags: [Payment Webhooks]
+      parameters:
+        - in: query
+          name: paymentID
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook received
+    post:
+      summary: bKash IPN Webhook (POST)
+      tags: [Payment Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BkashCallbackDto'
+      responses:
+        '200':
+          description: Webhook received
 
 components:
   securitySchemes:
@@ -636,8 +874,10 @@ components:
         email:
           type: string
           format: email
+          example: admin@example.com
         password:
           type: string
+          example: admin123
 
     AuthResponse:
       type: object
@@ -685,22 +925,36 @@ components:
         stockQuantity:
           type: integer
 
-    CartItem:
+    CartItemResponse:
       type: object
       properties:
         id:
           type: string
           format: uuid
-        userId:
-          type: string
-          format: uuid
-        productId:
+        quantity:
+          type: integer
+        product:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            price:
+              type: number
+              format: float
+            stockQuantity:
+              type: integer
+
+    CartAddResponse:
+      type: object
+      properties:
+        id:
           type: string
           format: uuid
         quantity:
           type: integer
-        product:
-          $ref: '#/components/schemas/Product'
 
     Order:
       type: object
@@ -845,4 +1099,68 @@ components:
         - transactionId
       properties:
         transactionId:
+          type: string
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+    CategoryTree:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryTree'
+    CreateCategoryDto:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+    UpdateCategoryDto:
+      type: object
+      properties:
+        name:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+    BkashCallbackDto:
+      type: object
+      properties:
+        paymentID:
+          type: string
+        status:
+          type: string
+        signature:
+          type: string
+    SslcommerzCallbackDto:
+      type: object
+      properties:
+        tran_id:
+          type: string
+        val_id:
+          type: string
+        amount:
+          type: string
+        status:
           type: string

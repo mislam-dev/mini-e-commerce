@@ -1,14 +1,23 @@
-import { IsInt, IsNumber, IsString, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsString, IsUUID, Min } from 'class-validator';
 
-import { IsProductCodeUnique } from '../decorators/is-product-code-unique.decorator';
+import { IsProductSkuUnique } from '../decorators/is-product-sku-unique.decorator';
+import { IsCategoryExists } from '../../category/decorators/is-category-exists.decorator';
+import { ProductStatus } from '../entities/product.entity';
 
 export class CreateProductDto {
-  @IsProductCodeUnique()
+  @IsProductSkuUnique()
   @IsString()
-  code: string;
+  sku: string;
+
+  @IsEnum(ProductStatus)
+  status: ProductStatus;
 
   @IsString()
   name: string;
+
+  @IsUUID()
+  @IsCategoryExists()
+  categoryId: string;
 
   @IsString()
   description: string;
@@ -17,7 +26,7 @@ export class CreateProductDto {
   @Min(0)
   price: number;
 
-  @IsInt()
+  @IsNumber()
   @Min(0)
   stockQuantity: number;
 }
